@@ -3,21 +3,24 @@
 </head>
 
 <body>
-  {{> task}}
+  {{> board}}
 </body>
 
 <template name="board">
-  {{#each rows}}
-    {{> row}}
+  {{#each columns}}
+    {{> column}}
   {{/each}}
 </template>
 
-<template name="row">
-  {{#each tasks}}
-    {{> task}}
-  {{/each}}
+<template name="column">
+  <div id="{{text}}" class="column">
+    <p>{{text}}</p>
+    {{#each tasks}}
+      {{> task}}
+    {{/each}}
+  </div>
 </template>
 
 <template name="task">
-  <div id="sample_task"></div>
+  <div id="{{text}}" class="task"></div>
 </template>
