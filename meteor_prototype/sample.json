@@ -1,0 +1,6 @@
+{
+    "Tasks": [
+        {"name":"Task0", "percent_completet":0.5, "percent_average_completition_time":0.8},
+        {"name":"Task1", "percent_completet":0.2, "percent_average_completition_time":0.3},
+    ]
+}
