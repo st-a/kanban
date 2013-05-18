@@ -6,6 +6,18 @@
   {{> task}}
 </body>
 
+<template name="board">
+  {{#each rows}}
+    {{> row}}
+  {{/each}}
+</template>
+
+<template name="row">
+  {{#each tasks}}
+    {{> task}}
+  {{/each}}
+</template>
+
 <template name="task">
-    <div id="sample_task"></div>
+  <div id="sample_task"></div>
 </template>
