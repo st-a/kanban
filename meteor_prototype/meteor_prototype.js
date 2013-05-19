@@ -31,7 +31,7 @@ var renderTask = function(task) {
   //// SVG in DOM einfügen
 
   // Zeichenfläche erzeugen
-  var sampleTaskSVG = d3.select("#" + task.text)
+  var sampleTaskSVG = d3.select("#" + task.id)
   .append("svg")
 
   // Task-Rechteck zeichnen
@@ -71,14 +71,14 @@ var calculateBoardSize = function() {
 // Größe des Tasks anpassen
 var sizeTask = function(task) {
   // Zeichenfläche
-  $('#' + task.text + ' svg').attr("width", task_width);
-  $('#' + task.text + ' svg').attr("height", task_height);
+  $('#' + task.id + ' svg').attr("width", task_width);
+  $('#' + task.id + ' svg').attr("height", task_height);
   // Rechteck
-  $('#' + task.text + ' rect').attr("width", task_width);
-  $('#' + task.text + ' rect').attr("height", task_height);
+  $('#' + task.id + ' rect').attr("width", task_width);
+  $('#' + task.id + ' rect').attr("height", task_height);
   // Dreiecke
-  $('#' + task.text + ' .time').attr("points", "0,0 0," + task_height + " " + (task_width * task.percent_average_completition_time) + "," + task_height);
-  $('#' + task.text + ' .progress').attr("points", "0,0 0," + task_height + " " +  (task_width * task.percent_completed) + "," + task_height);
+  $('#' + task.id + ' .time').attr("points", "0,0 0," + task_height + " " + (task_width * task.percent_average_completition_time) + "," + task_height);
+  $('#' + task.id + ' .progress').attr("points", "0,0 0," + task_height + " " +  (task_width * task.percent_completed) + "," + task_height);
 }
 
 ////// CLIENT

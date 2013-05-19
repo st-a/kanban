@@ -15,8 +15,8 @@
 </template>
 
 <template name="column">
-  <div id="{{text}}" class="column">
-    <p>{{text}}</p>
+  <div id="{{id}}" class="column">
+    <p>{{id}}</p>
     {{#each tasks}}
       {{> task}}
     {{/each}}
@@ -24,5 +24,5 @@
 </template>
 
 <template name="task">
-  <div id="{{text}}" class="task"></div>
+  <div id="{{id}}" class="task"></div>
 </template>
