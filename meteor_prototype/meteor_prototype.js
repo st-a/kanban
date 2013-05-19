@@ -5,7 +5,7 @@ var column_count = data.columns.length;
 var column_width, task_width, task_height;
 
 // einen Task rendern
-var renderTask = function(text, percent_completed, percent_average_completition_time) {
+var renderTask = function(task) {
 
   //// Reihenfolge und Farben festlegen
   
@@ -14,13 +14,13 @@ var renderTask = function(text, percent_completed, percent_average_completition_
     türkis_vorne = "#82bfbf", grau = "#404040", grau_vorne = "#999999";
 
   // Reihenfolge ermitteln: Fortschritt > Zeit?
-  if (percent_completed > percent_average_completition_time) {
+  if (task.percent_completed > task.percent_average_completition_time) {
     fortschritt_vor_zeit = "polygon"; // wird von null auf "polygon" gesetzt, weil es das zweite Attribut von d3.insert ist
     farbe_zeit = türkis_vorne;
   }
 
   // Task beendet?
-  if (percent_completed == 1) {
+  if (task.percent_completed == 1) {
     if (fortschritt_vor_zeit) farbe_zeit = grau_vorne;
     else {
       farbe_fortschritt = grau_vorne;
@@ -31,7 +31,7 @@ var renderTask = function(text, percent_completed, percent_average_completition_
   //// SVG in DOM einfügen
 
   // Zeichenfläche erzeugen
-  var sampleTaskSVG = d3.select("#" + text)
+  var sampleTaskSVG = d3.select("#" + task.text)
   .append("svg")
 
   // Task-Rechteck zeichnen
@@ -55,7 +55,7 @@ var renderTask = function(text, percent_completed, percent_average_completition_
 }
 
 // Größe von Tasks und Spalten berechnen und global speichern
-var calculateTaskSize = function() {
+var calculateBoardSize = function() {
 
   var column_max_width = 250, task_width_height_ratio = 0.4, task_column_ratio = 0.9;
   var board_width = $('#board').width();
@@ -69,13 +69,13 @@ var calculateTaskSize = function() {
 }
 
 // Größe des Tasks anpassen
-var sizeTask = function(text, percent_completed, percent_average_completition_time) {
-  $('#' + text + ' svg').attr("width", task_width);
-  $('#' + text + ' svg').attr("height", task_height);
-  $('#' + text + ' rect').attr("width", task_width);
-  $('#' + text + ' rect').attr("height", task_height);
-  $('#' + text + ' .time').attr("points", "0,0 0," + task_height + " " + (task_width * percent_average_completition_time) + "," + task_height);
-  $('#' + text + ' .progress').attr("points", "0,0 0," + task_height + " " +  (task_width * percent_completed) + "," + task_height);
+var sizeTask = function(task) {
+  $('#' + task.text + ' svg').attr("width", task_width);
+  $('#' + task.text + ' svg').attr("height", task_height);
+  $('#' + task.text + ' rect').attr("width", task_width);
+  $('#' + task.text + ' rect').attr("height", task_height);
+  $('#' + task.text + ' .time').attr("points", "0,0 0," + task_height + " " + (task_width * task.percent_average_completition_time) + "," + task_height);
+  $('#' + task.text + ' .progress').attr("points", "0,0 0," + task_height + " " +  (task_width * task.percent_completed) + "," + task_height);
 }
 
 ////// CLIENT
@@ -86,14 +86,14 @@ if (Meteor.isClient) {
   Meteor.startup(function() {
 
     // initiale Größe der Tasks und Spalten festlegen
-    calculateTaskSize();
+    calculateBoardSize();
 
     // nach Änderung der Fenstergröße alle Tasks neu zeichnen
     $(window).resize(function() {
-      calculateTaskSize();
+      calculateBoardSize();
       for(column in data.columns) {
         for(task in data.columns[column].tasks) {
-          sizeTask(data.columns[column].tasks[task].text, data.columns[column].tasks[task].percent_completed, data.columns[column].tasks[task].percent_average_completition_time);
+          sizeTask(data.columns[column].tasks[task]);
         }
       }
     });
@@ -107,8 +107,8 @@ if (Meteor.isClient) {
 
   // jedes mal, wenn das task-template geladen wird, entsprechendes SVG einfügen
   Template.task.rendered = function() {
-    renderTask(this.data.text, this.data.percent_completed, this.data.percent_average_completition_time);
-    sizeTask(this.data.text, this.data.percent_completed, this.data.percent_average_completition_time);
+    renderTask(this.data);
+    sizeTask(this.data);
   };
 }
 
