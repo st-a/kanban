@@ -19,11 +19,11 @@ data = {
             ]
         },
         {"text":"Ausliefern", "tasks": [
-            {"text":"Interface", "percent_completed":0.8, "percent_average_completition_time":0.8},        
             {"text":"Storage", "percent_completed":0.6, "percent_average_completition_time":0.7},        
+            {"text":"Interface", "percent_completed":0.8, "percent_average_completition_time":0.8},        
             ]
         },
-        {"text":"Done", "tasks": [
+        {"text":"Fertig", "tasks": [
             {"text":"Prototyp", "percent_completed":1, "percent_average_completition_time":1.4},
             {"text":"Webserver", "percent_completed":1, "percent_average_completition_time":0.9},
             {"text":"Client", "percent_completed":1, "percent_average_completition_time":1},
