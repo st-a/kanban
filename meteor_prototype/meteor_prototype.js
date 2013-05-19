@@ -1,10 +1,10 @@
 ////// GLOBAL
 
-// wie viele Spalten gibt es?
+// globale Eigenschaften der Spalten und Tasks
 var column_count = data.columns.length;
 var column_width, task_width, task_height;
 
-// einen Task rendern
+// einen Task rendern, SVG dem DOM hinzufügen
 var renderTask = function(task) {
 
   //// Reihenfolge und Farben festlegen
@@ -70,10 +70,13 @@ var calculateBoardSize = function() {
 
 // Größe des Tasks anpassen
 var sizeTask = function(task) {
+  // Zeichenfläche
   $('#' + task.text + ' svg').attr("width", task_width);
   $('#' + task.text + ' svg').attr("height", task_height);
+  // Rechteck
   $('#' + task.text + ' rect').attr("width", task_width);
   $('#' + task.text + ' rect').attr("height", task_height);
+  // Dreiecke
   $('#' + task.text + ' .time').attr("points", "0,0 0," + task_height + " " + (task_width * task.percent_average_completition_time) + "," + task_height);
   $('#' + task.text + ' .progress').attr("points", "0,0 0," + task_height + " " +  (task_width * task.percent_completed) + "," + task_height);
 }
@@ -82,13 +85,13 @@ var sizeTask = function(task) {
 
 if (Meteor.isClient) {
 
-  // wird ausgeführt, sobald das Dokument geladen ist
+  // wird ausgeführt, sobald das Dokument fertig geladen ist
   Meteor.startup(function() {
 
-    // initiale Größe der Tasks und Spalten festlegen
+    //Größe der Tasks und Spalten initialisieren
     calculateBoardSize();
 
-    // nach Änderung der Fenstergröße alle Tasks neu zeichnen
+    // nach Änderung der Fenstergröße, alle Tasks neu zeichnen
     $(window).resize(function() {
       calculateBoardSize();
       for(column in data.columns) {
@@ -105,7 +108,7 @@ if (Meteor.isClient) {
     return data.columns;
   }
 
-  // jedes mal, wenn das task-template geladen wird, entsprechendes SVG einfügen
+  // jedes mal, wenn das Task-template geladen wird, entsprechendes SVG einfügen
   Template.task.rendered = function() {
     renderTask(this.data);
     sizeTask(this.data);
