@@ -7,9 +7,11 @@
 </body>
 
 <template name="board">
-  {{#each columns}}
-    {{> column}}
-  {{/each}}
+  <div id="board">
+    {{#each columns}}
+      {{> column}}
+    {{/each}}
+  </div>
 </template>
 
 <template name="column">
