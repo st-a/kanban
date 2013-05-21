@@ -1,1 +1,3 @@
-/* CSS declarations go here */
+html, body {height: 100%;}
+
+.column {min-height: 100%; height: auto; float:left;}
