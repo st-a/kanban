@@ -1,5 +1,6 @@
 //globale Var
 var task_width = 200, task_height = 100;
+//Position der SVG im Browser
 var tbX,tbY;
 
 //Hilfsvariablen für DandD
@@ -7,96 +8,103 @@ var mTask, oldX, oldY;
 
 //Button zum spielen
 var update = function(){
-  
   d3.selectAll("g")
     .transition()
     .attr("transform", "translate(100,100")
     .duration(1000);
-    
 }
 
 
 function positionUpdate(t) {
-  var a;
+  var a; //Nachfolgertask
   var d = dataset.task;
   var posX = $('#' + t.id).position().left - tbX;
-  var posY = $('#' + t.id).position().top;
+  var posY = $('#' + t.id).position().top - tbY;
   
   d3.selectAll("#" + t.id)
     .transition()
-    .attr("transform", "translate(" + posX + "," + (posY-task_height-tbY-10) + ")")
-    .duration(1000);
-      
+    .attr("transform", "translate(" + posX + "," + (posY-task_height-10) + ")")
+    .duration(800);
+  
+  //falls Nachfolgertask vorhanden mit nachruecken    
   if(t.after != null){
-        for (var i = 0; i < d.length; i++){
+    for (var i = 0; i < d.length; i++){
       if (t.after == d[i].id) { a = d[i] }
-      }
+    }
     positionUpdate(a);
   }
 }
 
 
-
-
+//Tasks neu verknuepfen
+//Vorgaenger und Nachfolger des Dragtasks
 function stateUpdate(b,a) {
- var d = dataset.task;
- 
- if(a == null){
-  if(b != null){
-    for (var i = 0; i < d.length; i++){
-      if (d[i].id == b) { b = d[i]; } 
-    }
+  var d = dataset.task;
+  
+  //keinen Nachfolger
+  if(a == null){
+    //aber Vorgaenger
+    if(b != null){
+      //id to object
+      for (var i = 0; i < d.length; i++){
+        if (d[i].id == b) { b = d[i]; } 
+      }
+    //Vorgaenger hat keinen Nachfolger mehr  
     b.after = null;
-  }
-}
-else{
-  if (b != null) {
-    for (var i = 0; i < d.length; i++){
-      if (d[i].id == b) { b = d[i]; }
-      if (d[i].id == a) { a = d[i]; }
     }
-  
+  }
+  //hat einen Nachfolger
+  else {
+    //und Vorgaenger
+    if (b != null) {
+      //id to object
+      for (var i = 0; i < d.length; i++){
+        if (d[i].id == b) { b = d[i]; }
+        if (d[i].id == a) { a = d[i]; }
+      }
+    //verknuepfen d Tasks  
     a.before = b.id;
-    b.after = a.id;
-    
-  }
-  
-  else{
-    for (var i = 0; i < d.length; i++){
-      if (d[i].id == a) { a = d[i]; } 
+    b.after = a.id;  
     }
-    a.before = null;
-  }
+    //Nachfolger aber keinen Vorgaenger  
+    else {
+      //id to object
+      for (var i = 0; i < d.length; i++){
+        if (d[i].id == a) { a = d[i]; } 
+      }
+      a.before = null;
+    }
+  //Nachruecken um Luecke schliessen 
   positionUpdate(a);
-} 
+  } 
 }
-
 
 
 
 //Am Begin des Drags
 function start(id) {
-//Mousepos innerhalb eines Tasks  
+  //Mousepos innerhalb eines Tasks  
   mTask = d3.mouse($('#' + id)[0]);
   
+  //alte Position des Tasks  
   oldX = $('#' + id).position().left;
   oldY = $('#' + id).position().top;
 }
 
 
 
-
 //Funktion während des Drags
-function move(id){
-//Mousepos im Taskboard  
+function move(id){  
+  //Mousepos im Taskboard  
   var mTaskboard = d3.mouse($('#taskboard')[0]);
   var dragTarget = d3.select('#' + id);
   
   newX =(mTaskboard[0]-mTask[0]);
   newY =(mTaskboard[1]-mTask[1]);
+  //neue Positon des Tasks
   dragTarget
     .attr("transform", "translate(" + newX  + "," + newY + ")");
-};
+}
 
 
 
@@ -107,8 +115,8 @@ function stop(t) {
  var posX = $('#' + t.id).position().left;
  var posY = 0;
  var d = dataset.task;
- var statecount = 0;
- 
+  
+  //Task auf alte position zuruecksetzten 
   if((posX < (oldX+(task_width+10)-task_width/3)) || (posX > oldX+(2*task_width))){
     d3.select('#' + t.id)
       .transition()
@@ -116,24 +124,22 @@ function stop(t) {
       .duration(1000)
       .ease("elastic");
   }
-      
   
+  //Task wird innerhalb der neuen Spalte losgelassen
   else{
     //State hochsetzten
     t.state = t.state +1;
-    
+    //letzten Tasks der neuen Spalte finden
     for (var i = 0; i < d.length; i++) {   
       if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
+        //Position unter den letzten Task
         posY = $('#' + d[i].id).position().top + task_height-tbY + 10;
         d[i].after = t.id;
         stateUpdate(t.before, t.after);
         t.before = d[i].id;
-      }
-      if (t.state == d[i].state) {
-        satecount = statecount +1;
-      }
-      
+      }  
     }
+    
     d3.select('#' + t.id)
       .transition()
       .attr("transform", "translate(" + (oldX+task_width+10) + "," + posY +")")
@@ -158,11 +164,6 @@ var position = function(state, before){
 
 //rendert alle Tasks
 var renderTask = function() {
-  
-//test Datenset  
-var datad = [ 5, 10, 15, 20, 25 ];
-
-
 d3.select("#taskboard").selectAll("g")
   //Datenanbindung
   .data(dataset.task).enter()
@@ -186,8 +187,8 @@ d3.select("#taskboard").selectAll("g")
 }
 
 
-////// CLIENT
 
+////// CLIENT
 if (Meteor.isClient) {
 
   Meteor.startup(function() {
@@ -198,11 +199,12 @@ if (Meteor.isClient) {
      tbX = $('#taskboard').position().left;
      tbY = $('#taskboard').position().top;
      renderTask();
-  };
+  }
 }
 
-////// SERVER
 
+
+////// SERVER
 if (Meteor.isServer) {
   Meteor.startup(function() {
     // code to run on server at startup
