@@ -40,7 +40,16 @@ function positionUpdate(t) {
 
 function stateUpdate(b,a) {
  var d = dataset.task;
-  
+ 
+ if(a == null){
+  if(b != null){
+    for (var i = 0; i < d.length; i++){
+      if (d[i].id == b) { b = d[i]; } 
+    }
+    b.after = null;
+  }
+}
+else{
   if (b != null) {
     for (var i = 0; i < d.length; i++){
       if (d[i].id == b) { b = d[i]; }
@@ -59,7 +68,9 @@ function stateUpdate(b,a) {
     a.before = null;
   }
   positionUpdate(a);
+} 
 }
+
 
 
 
@@ -115,10 +126,7 @@ function stop(t) {
       if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
         posY = $('#' + d[i].id).position().top + task_height-tbY + 10;
         d[i].after = t.id;
-        
-        if(t.after != null){
-          stateUpdate(t.before, t.after)
-        }
+        stateUpdate(t.before, t.after);
         t.before = d[i].id;
       }
       if (t.state == d[i].state) {
