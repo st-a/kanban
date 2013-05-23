@@ -1,21 +1,42 @@
 //globale Var
-var task_width = 200, task_height = 100;
+  var task_width = 200, task_height = 100;
 //Position der SVG im Browser
-var tbX,tbY;
-
+  var tbX,tbY;
+//Abstand nach rechts/unter
+  var spaceR = 30;
+  var spaceB = 10;
 //Hilfsvariablen für DandD
-var mTask, oldX, oldY;
+  var mTask, oldX, oldY;
+  
+//Timervariablen
+  var bClick = 0;
+  var interval;
 
-//Button zum spielen
-var update = function(){
-  d3.selectAll("g")
-    .transition()
-    .attr("transform", "translate(100,100")
-    .duration(1000);
+
+function setTimeGraph(d,t) {
+  d.percent_average_completition_time = d.percent_average_completition_time + t;
+  
+  if (d.percent_average_completition_time <= 1) {
+   return ("0,0 0," + task_height + " " +
+          (task_width * d.percent_average_completition_time) + "," + task_height)
+  }
+  else {
+    return ("0,0 0," + task_height + " " +
+           task_width + "," + task_height + " " +
+           task_width + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
+  }
 }
 
 
-function positionUpdate(t) {
+
+function setProgressGraph(d) {
+  return ("0,0 0," + task_height + " " +
+         (task_width * d.percent_completed) + "," + task_height)
+}
+
+
+
+function positionUpdate(t, speed) {
   var a; //Nachfolgertask
   var d = dataset.task;
   var posX = $('#' + t.id).position().left - tbX;
@@ -23,15 +44,15 @@ function positionUpdate(t) {
   
   d3.selectAll("#" + t.id)
     .transition()
-    .attr("transform", "translate(" + posX + "," + (posY-task_height-10) + ")")
-    .duration(800);
+    .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
+    .duration(speed);
   
   //falls Nachfolgertask vorhanden mit nachruecken    
   if(t.after != null){
     for (var i = 0; i < d.length; i++){
       if (t.after == d[i].id) { a = d[i] }
     }
-    positionUpdate(a);
+   positionUpdate(a, speed+100);
   }
 }
 
@@ -75,7 +96,7 @@ function stateUpdate(b,a) {
       a.before = null;
     }
   //Nachruecken um Luecke schliessen 
-  positionUpdate(a);
+  positionUpdate(a, 500);
   } 
 }
 
@@ -94,16 +115,20 @@ function start(id) {
 
 
 //Funktion während des Drags
-function move(id){  
+function move(d){
+  
+  if (!(d.state >= 4)) {
+
   //Mousepos im Taskboard  
   var mTaskboard = d3.mouse($('#taskboard')[0]);
-  var dragTarget = d3.select('#' + id);
+  var dragTarget = d3.select('#' + d.id);
   
   newX =(mTaskboard[0]-mTask[0]);
   newY =(mTaskboard[1]-mTask[1]);
   //neue Positon des Tasks
   dragTarget
     .attr("transform", "translate(" + newX  + "," + newY + ")");
+  }
 }
 
 
@@ -117,7 +142,7 @@ function stop(t) {
  var d = dataset.task;
   
   //Task auf alte position zuruecksetzten 
-  if((posX < (oldX+(task_width+10)-task_width/3)) || (posX > oldX+(2*task_width))){
+  if((posX < (oldX+(task_width+spaceR)-task_width/3)) || (posX > oldX+(2*task_width))){
     d3.select('#' + t.id)
       .transition()
       .attr("transform", "translate(" + (oldX-tbX) + "," + (oldY-tbY) +")")
@@ -129,11 +154,12 @@ function stop(t) {
   else{
     //State hochsetzten
     t.state = t.state +1;
+    
     //letzten Tasks der neuen Spalte finden
-    for (var i = 0; i < d.length; i++) {   
+    for (var i = 0; i < d.length; i++) {
       if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
         //Position unter den letzten Task
-        posY = $('#' + d[i].id).position().top + task_height-tbY + 10;
+        posY = $('#' + d[i].id).position().top + task_height + spaceB - tbY;
         d[i].after = t.id;
         stateUpdate(t.before, t.after);
         t.before = d[i].id;
@@ -142,9 +168,9 @@ function stop(t) {
     
     d3.select('#' + t.id)
       .transition()
-      .attr("transform", "translate(" + (oldX+task_width+10) + "," + posY +")")
+      .attr("transform", "translate(" + (oldX+task_width+spaceR - tbX) + "," + posY +")")
       .duration(600);
-    if (posY == 0) {stateUpdate(t.before, t.after); t.before == null;}  
+    if (posY == 0) {stateUpdate(t.before, t.after); t.before = null;}  
     t.after = null;
   }
 }
@@ -153,37 +179,79 @@ function stop(t) {
 //Berechnung der x und y Position bezueglich des States und des Vorgaengers
 var position = function(state, before){
   var y, x;
-  x = state*(task_width+20);
+  x = state*(task_width + spaceR);
   
   if (before == null) { y = 0; }
   else {
-    y = $('#' + before).position().top + task_height+ 10 - tbY;
+    y = $('#' + before).position().top + task_height + spaceB - tbY;
   } 
   return "translate(" + x + "," + y + ")";
 }
 
+
+function timerTick() {
+  var d = dataset.task
+  
+  for (var i = 0; i < d.length; i++) {
+    if ((d[i].state != 0) && (d[i].state != 4)) {
+     if(d[i].percent_average_completition_time <= 2){
+    var point = setTimeGraph(d[i], 0.01);
+    d3.select('#' + d[i].id).select(".timer").transition().attr("points", point);
+     }
+    }
+  }
+}
+
+
+//Button zum spielen
+var update = function(){
+  if ((bClick%2) == 0) {
+    alert("timer on");
+    interval = setInterval(timerTick,1000);
+  }
+  else{
+    clearInterval(interval);
+    alert("timer off");
+    }
+    ++bClick;
+}
+
+
+
+
 //rendert alle Tasks
 var renderTask = function() {
-d3.select("#taskboard").selectAll("g")
+var taskboard = d3.select("#taskboard").selectAll("g")
   //Datenanbindung
   .data(dataset.task).enter()
     
     //SVG-Group
     .append("g")
     .attr("id" , function(d){return d.id})
-    .attr("transform", function(d){return position(d.state, d.before)})
-    
+    .attr("transform", function(d){return position(d.state, d.before)})    
     //Drag and Drop Event
     .call(d3.behavior.drag()
     .on("dragstart", function(d){start(d.id)})     
-    .on("drag", function(d){move(d.id)})
-    .on("dragend", function(d){stop(d)}))
+    .on("drag", function(d){move(d)})
+    .on("dragend", function(d){stop(d)}));
     
-    //Rechteck
-    .append("rect")
-    .attr("height", task_height)
-    .attr("width", task_width)
-    .attr("fill", "red");
+    //Rechteck  
+    taskboard.append("rect")
+      .attr("height", task_height)
+      .attr("width", task_width)
+      .attr("fill", "#f0f0f0");
+      
+    //Zeitgraph
+    
+    taskboard.append("polygon")
+      .attr("points", function(d){ return setTimeGraph(d,0) })
+      .style("fill", "red")
+      .attr("class", "timer");
+      
+    //Fortschrittsgraph  
+    taskboard.append("polygon")
+      .attr("points", function(d){ return setProgressGraph(d) })
+      .style("fill", "#00a99d");
 }
 
 
