@@ -16,4 +16,5 @@ http://bonsaiden.github.io/JavaScript-Garden
 http://www.peterkropff.de/site/javascript/grundlagen.htm
 
 ## git
+http://git-scm.com/doc  
 http://gitref.org
