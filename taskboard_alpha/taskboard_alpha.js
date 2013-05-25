@@ -1,5 +1,6 @@
 // globale Var
   var task_width = 200, task_height = 100;
+  var states_count = 3;
 // Position der SVG im Browser
   var tbX,tbY;
 // Abstand nach rechts/unter
@@ -7,7 +8,6 @@
   var spaceB = 10;
 // Hilfsvariablen fuer DandD
   var mTask, oldX, oldY;
-  
 // Timervariablen
   var bClick = 0;
   var interval;
@@ -146,7 +146,10 @@ function stop(t) {
   // Task wird innerhalb der neuen Spalte losgelassen
   else{
     // State hochsetzten
-    t.state = t.state +1;
+    t.state = t.state + 1;
+    // percent_completed anpassen
+    t.percent_completed = (t.state - 1) / states_count;
+    renderTask();
     
     // letzten Tasks der neuen Spalte finden
     for (var i = 0; i < d.length; i++) {
@@ -187,61 +190,65 @@ function timerTick() {
   
   for (var i = 0; i < d.length; i++) {
     if ((d[i].state != 0) && (d[i].state != 4)) {
-     if(d[i].percent_average_completition_time <= 2){
-    var point = setTimeGraph(d[i], 0.01);
-    d3.select('#' + d[i].id).select(".timer").transition().attr("points", point);
-     }
+      if(d[i].percent_average_completition_time <= 2) {
+        var point = setTimeGraph(d[i], 0.01);
+        d3.select('#' + d[i].id).select(".timer").transition().attr("points", point);
+      }
     }
   }
 }
 
 
 // Button fuer Zeit ein/aus
-var update = function(){
+var update = function() {
   if ((bClick%2) == 0) {
     alert("timer on");
     interval = setInterval(timerTick,1000);
   }
-  else{
+  else {
     clearInterval(interval);
     alert("timer off");
-    }
-    ++bClick;
+  }
+  ++bClick;
 }
 
 
 // rendert alle Tasks
 var renderTask = function() {
-var taskboard = d3.select("#taskboard").selectAll("g")
+
+  // falls wir updaten, alle alten <g> loeschen
+  d3.select("#taskboard").selectAll("g").remove();
+
+  var taskboard = d3.select("#taskboard").selectAll("g")
   // Datenanbindung
   .data(dataset.task).enter()
+  
+  // SVG-Group
+  .append("g")
+  .attr("id" , function(d){return d.id})
+  .attr("transform", function(d){return position(d.state, d.before)})    
+  // Drag and Drop Event
+  .call(d3.behavior.drag()
+  .on("dragstart", function(d){start(d.id)})     
+  .on("drag", function(d){move(d)})
+  .on("dragend", function(d){stop(d)}));
+  
+  // Rechteck  
+  taskboard.append("rect")
+    .attr("height", task_height)
+    .attr("width", task_width)
+    .attr("fill", "#f0f0f0");
     
-    // SVG-Group
-    .append("g")
-    .attr("id" , function(d){return d.id})
-    .attr("transform", function(d){return position(d.state, d.before)})    
-    // Drag and Drop Event
-    .call(d3.behavior.drag()
-    .on("dragstart", function(d){start(d.id)})     
-    .on("drag", function(d){move(d)})
-    .on("dragend", function(d){stop(d)}));
+  // Zeitgraph
+  taskboard.append("polygon")
+    .attr("points", function(d){ return setTimeGraph(d,0) })
+    .style("fill", "red")
+    .attr("class", "timer");
     
-    // Rechteck  
-    taskboard.append("rect")
-      .attr("height", task_height)
-      .attr("width", task_width)
-      .attr("fill", "#f0f0f0");
-      
-    // Zeitgraph
-    taskboard.append("polygon")
-      .attr("points", function(d){ return setTimeGraph(d,0) })
-      .style("fill", "red")
-      .attr("class", "timer");
-      
-    // Fortschrittsgraph  
-    taskboard.append("polygon")
-      .attr("points", function(d){ return setProgressGraph(d) })
-      .style("fill", "#00a99d");
+  // Fortschrittsgraph  
+  taskboard.append("polygon")
+    .attr("points", function(d){ return setProgressGraph(d) })
+    .style("fill", "#00a99d");
 }
 
 
