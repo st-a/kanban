@@ -1,14 +1,14 @@
-//globale Var
+// globale Var
   var task_width = 200, task_height = 100;
-//Position der SVG im Browser
+// Position der SVG im Browser
   var tbX,tbY;
-//Abstand nach rechts/unter
+// Abstand nach rechts/unter
   var spaceR = 30;
   var spaceB = 10;
-//Hilfsvariablen für DandD
+// Hilfsvariablen fuer DandD
   var mTask, oldX, oldY;
   
-//Timervariablen
+// Timervariablen
   var bClick = 0;
   var interval;
 
@@ -28,16 +28,14 @@ function setTimeGraph(d,t) {
 }
 
 
-
 function setProgressGraph(d) {
   return ("0,0 0," + task_height + " " +
          (task_width * d.percent_completed) + "," + task_height)
 }
 
 
-
 function positionUpdate(t, speed) {
-  var a; //Nachfolgertask
+  var a; // Nachfolgertask
   var d = dataset.task;
   var posX = $('#' + t.id).position().left - tbX;
   var posY = $('#' + t.id).position().top - tbY;
@@ -47,7 +45,7 @@ function positionUpdate(t, speed) {
     .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
     .duration(speed);
   
-  //falls Nachfolgertask vorhanden mit nachruecken    
+  // falls Nachfolgertask vorhanden mit nachruecken    
   if(t.after != null){
     for (var i = 0; i < d.length; i++){
       if (t.after == d[i].id) { a = d[i] }
@@ -57,91 +55,86 @@ function positionUpdate(t, speed) {
 }
 
 
-//Tasks neu verknuepfen
-//Vorgaenger und Nachfolger des Dragtasks
+// Tasks neu verknuepfen
+// Vorgaenger und Nachfolger des Dragtasks
 function stateUpdate(b,a) {
   var d = dataset.task;
   
-  //keinen Nachfolger
+  // keinen Nachfolger
   if(a == null){
-    //aber Vorgaenger
+    // aber Vorgaenger
     if(b != null){
-      //id to object
+      // id to object
       for (var i = 0; i < d.length; i++){
         if (d[i].id == b) { b = d[i]; } 
       }
-    //Vorgaenger hat keinen Nachfolger mehr  
+    // Vorgaenger hat keinen Nachfolger mehr  
     b.after = null;
     }
   }
-  //hat einen Nachfolger
+  // hat einen Nachfolger
   else {
-    //und Vorgaenger
+    // und Vorgaenger
     if (b != null) {
-      //id to object
+      // id to object
       for (var i = 0; i < d.length; i++){
         if (d[i].id == b) { b = d[i]; }
         if (d[i].id == a) { a = d[i]; }
       }
-    //verknuepfen d Tasks  
+    // verknuepfen des Tasks  
     a.before = b.id;
     b.after = a.id;  
     }
-    //Nachfolger aber keinen Vorgaenger  
+    // Nachfolger aber keinen Vorgaenger  
     else {
-      //id to object
+      // id to object
       for (var i = 0; i < d.length; i++){
         if (d[i].id == a) { a = d[i]; } 
       }
       a.before = null;
     }
-  //Nachruecken um Luecke schliessen 
+  // Nachruecken um Luecke zu schliessen 
   positionUpdate(a, 500);
   } 
 }
 
 
-
-//Am Begin des Drags
+// am Begin des Drags
 function start(id) {
-  //Mousepos innerhalb eines Tasks  
+  // Mousepos innerhalb eines Tasks  
   mTask = d3.mouse($('#' + id)[0]);
   
-  //alte Position des Tasks  
+  // alte Position des Tasks  
   oldX = $('#' + id).position().left;
   oldY = $('#' + id).position().top;
 }
 
 
-
-//Funktion während des Drags
+// Funktion waehrend des Drags
 function move(d){
   
   if (!(d.state >= 4)) {
 
-  //Mousepos im Taskboard  
+  // Mousepos im Taskboard  
   var mTaskboard = d3.mouse($('#taskboard')[0]);
   var dragTarget = d3.select('#' + d.id);
   
   newX =(mTaskboard[0]-mTask[0]);
   newY =(mTaskboard[1]-mTask[1]);
-  //neue Positon des Tasks
+  // neue Positon des Tasks
   dragTarget
     .attr("transform", "translate(" + newX  + "," + newY + ")");
   }
 }
 
 
-
-
-
-//Funktion beim Drop
+// Funktion beim Drop
 function stop(t) {
  var posX = $('#' + t.id).position().left;
  var posY = 0;
  var d = dataset.task;
   
-  //Task auf alte position zuruecksetzten 
+  // Task auf alte Position zuruecksetzen 
   if((posX < (oldX+(task_width+spaceR)-task_width/3)) || (posX > oldX+(2*task_width))){
     d3.select('#' + t.id)
       .transition()
@@ -150,15 +143,15 @@ function stop(t) {
       .ease("elastic");
   }
   
-  //Task wird innerhalb der neuen Spalte losgelassen
+  // Task wird innerhalb der neuen Spalte losgelassen
   else{
-    //State hochsetzten
+    // State hochsetzten
     t.state = t.state +1;
     
-    //letzten Tasks der neuen Spalte finden
+    // letzten Tasks der neuen Spalte finden
     for (var i = 0; i < d.length; i++) {
       if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
-        //Position unter den letzten Task
+        // Position unter den letzten Task
         posY = $('#' + d[i].id).position().top + task_height + spaceB - tbY;
         d[i].after = t.id;
         stateUpdate(t.before, t.after);
@@ -176,7 +169,7 @@ function stop(t) {
 }
 
 
-//Berechnung der x und y Position bezueglich des States und des Vorgaengers
+// Berechnung der x und y Position bezueglich des States und des Vorgaengers
 var position = function(state, before){
   var y, x;
   x = state*(task_width + spaceR);
@@ -203,7 +196,7 @@ function timerTick() {
 }
 
 
-//Button zum spielen
+// Button fuer Zeit ein/aus
 var update = function(){
   if ((bClick%2) == 0) {
     alert("timer on");
@@ -217,43 +210,39 @@ var update = function(){
 }
 
 
-
-
-//rendert alle Tasks
+// rendert alle Tasks
 var renderTask = function() {
 var taskboard = d3.select("#taskboard").selectAll("g")
-  //Datenanbindung
+  // Datenanbindung
   .data(dataset.task).enter()
     
-    //SVG-Group
+    // SVG-Group
     .append("g")
     .attr("id" , function(d){return d.id})
     .attr("transform", function(d){return position(d.state, d.before)})    
-    //Drag and Drop Event
+    // Drag and Drop Event
     .call(d3.behavior.drag()
     .on("dragstart", function(d){start(d.id)})     
     .on("drag", function(d){move(d)})
     .on("dragend", function(d){stop(d)}));
     
-    //Rechteck  
+    // Rechteck  
     taskboard.append("rect")
       .attr("height", task_height)
       .attr("width", task_width)
       .attr("fill", "#f0f0f0");
       
-    //Zeitgraph
-    
+    // Zeitgraph
     taskboard.append("polygon")
       .attr("points", function(d){ return setTimeGraph(d,0) })
       .style("fill", "red")
       .attr("class", "timer");
       
-    //Fortschrittsgraph  
+    // Fortschrittsgraph  
     taskboard.append("polygon")
       .attr("points", function(d){ return setProgressGraph(d) })
       .style("fill", "#00a99d");
 }
-
 
 
 ////// CLIENT
@@ -278,5 +267,3 @@ if (Meteor.isServer) {
     // code to run on server at startup
   });
 }
-  
-  
