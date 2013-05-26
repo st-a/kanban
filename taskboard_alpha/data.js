@@ -21,7 +21,14 @@ dataset = { "task":[
             {"id":"Prototyp", "percent_completed":1, "percent_average_completition_time":1.4 , "state": 4, "before":null ,"after":"Webserver"},
             {"id":"Webserver", "percent_completed":1, "percent_average_completition_time":0.9, "state": 4, "before":"Prototyp" ,"after":"Client"},
             {"id":"Client", "percent_completed":1, "percent_average_completition_time":1, "state": 4, "before":"Webserver" ,"after":null}
-            ]
+            ],
+
+        "Columns":[
+            
+            {"id":"Entwerfen"},
+            {"id":"Umsetzen"},
+            {"id":"Ausliefern"},
+        ]
 };
 
 
