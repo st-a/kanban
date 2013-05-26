@@ -1,4 +1,5 @@
 // globale Var
+
   var task_width = 150, task_height = 100;
 
 // Position der SVG im Browser
@@ -31,7 +32,9 @@ function setTimeGraph(d,t,s) {
 }
 
 
+
 function setProgressGraph(d,s) {
+
   return ("0,0 0," + task_height + " " +
          ((task_width/s) * d.percent_completed) + "," + task_height)
 }
@@ -58,7 +61,6 @@ function doneUpdate() {
   }
   
 }
-
 
 
 function positionUpdate(t, speed) {
@@ -176,7 +178,7 @@ function stop(t) {
     t.state = t.state + 1;
     // percent_completed anpassen
     t.percent_completed = (t.state - 1) / dataset.Columns.length;
-    //renderTask();
+
     
     // letzten Tasks der neuen Spalte finden
     for (var i = 0; i < d.length; i++) {
@@ -287,8 +289,8 @@ var renderTask = function() {
 //rendert das Taskboard
 var renderTaskboard = function(){
   
-}
 
+}
 
 
 ////// CLIENT
