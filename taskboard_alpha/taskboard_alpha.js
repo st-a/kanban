@@ -13,16 +13,20 @@
   var bClick = 0;
   var interval;
 
-
+//Rechteck-Variable
+Rechteck = false;
 
 
 
 function setTimeGraph(d,t,s) {
   d.percent_average_completition_time = d.percent_average_completition_time + t;
   
+  if (Rechteck==true) {
+  
   if (d.percent_average_completition_time <= 1) {
    return ("0,0 0," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + "," + task_height)
+          ((task_width/s) * d.percent_average_completition_time) + "," + task_height + " " +
+          ((task_width/s) * d.percent_average_completition_time) + ",0")
   }
   else {
     return ("0,0 0," + task_height + " " +
@@ -30,13 +34,34 @@ function setTimeGraph(d,t,s) {
            task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
   }
 }
+else{
+  
+  
+    if (d.percent_average_completition_time <= 1) {
+   return ("0,0 0," + task_height + " " +
+          ((task_width/s) * d.percent_average_completition_time) + "," + task_height)
+  }
+  else {
+    return ("0,0 0," + task_height + " " +
+           task_width/s + "," + task_height + " " +
+           task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
+  } 
+}
+
+}
 
 
 
 function setProgressGraph(d,s) {
-
-  return ("0,0 0," + task_height + " " +
-         ((task_width/s) * d.percent_completed) + "," + task_height)
+  if (Rechteck==true) {
+    return ("0,0 0," + task_height + " " +
+           ((task_width/s) * d.percent_completed) + "," + task_height + " " +
+           ((task_width/s) * d.percent_completed) + ",0" )
+  }
+  else{
+    return ("0,0 0," + task_height + " " +
+           ((task_width/s) * d.percent_completed) + "," + task_height)
+  }
 }
 
 
@@ -272,6 +297,7 @@ var renderTask = function() {
     .attr("width", task_width)
     .attr("fill", "#f0f0f0");
     
+    
   // Zeitgraph
   taskboard.append("polygon")
     .attr("points", function(d){ return setTimeGraph(d,0,1) })
@@ -283,6 +309,11 @@ var renderTask = function() {
     .attr("points", function(d){ return setProgressGraph(d,1) })
     .style("fill", "#00a99d")
     .attr("class", "progress");
+
+  
+
+
+    
 }
 
 
@@ -297,7 +328,10 @@ var renderTaskboard = function(){
 if (Meteor.isClient) {
 
   Meteor.startup(function() {
-    $('button').click(update);
+    $('#timeswitch').click(update);
+        $('#Dreiecke').click(function(){Rechteck = false; renderTask()});
+    $('#Rechtecke').click(function(){Rechteck = true; renderTask()});
+
   });
 
   Template.board.rendered = function() {
