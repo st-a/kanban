@@ -1,20 +1,20 @@
 // globale Var
 
-  var task_width = 150, task_height = 100;
+  var task_width = 150, task_height = 70;
 
 // Position der SVG im Browser
   var tbX,tbY;
 // Abstand nach rechts/unter
   var spaceR = 30;
   var spaceB = 10;
+  var spaceT = 40;
 // Hilfsvariablen fuer DandD
   var mTask, oldX, oldY;
 // Timervariablen
   var bClick = 0;
   var interval;
-
 //Rechteck-Variable
-Rechteck = false;
+var Rechteck = false;
 
 
 
@@ -65,27 +65,36 @@ function setProgressGraph(d,s) {
 }
 
 
-
-//Done-Spalte manipulieren
-function doneUpdate() {
+/*function update() {
   var d = dataset.task;
-  var scale = 2;
-
-  for (var i = 0; i < d.length; i++) {
-    if (d[i].state == (dataset.Columns.length+1)) {
-      var task = d3.select("#" + d[i].id);
-
-          task.selectAll("rect").transition()
-            .attr("width", task_width/scale)
-          task.select(".progress").transition()
-            .attr("points", setProgressGraph(d[i],scale));
-          task.select(".timer").transition()
-            .attr("points", setTimeGraph(d[i],0,scale));
   
+  for (var i = 0; i < d.length; i++) {
+    if ((d[i].state > 0) && (d[i].state < (dataset.Columns.length+1))) {
+      if (d[i].percent_completed > d[i].percent_average_completition_time) {
+        d3.select('#' + d[i].id).selectAll('polygon').remove();
+        
+          // Fortschrittsgraph  
+  d3.select('#' + d[i].id).append("polygon")
+
+    .attr("fill", "#00a99d")
+    .attr("class", "progress")
+      .transition()
+    .attr("points", function(d){ return setProgressGraph(d,1) }).duration(600);;
+        
+        d3.select('#' + d[i].id).append("polygon")
+
+    .attr("fill", "#82bfbf")
+    .attr("class", "timer")
+            .transition()
+    .attr("points", function(d){ return setTimeGraph(d,0,1) }).duration(600);;
+    
+ 
     }
   }
-  
+
 }
+}*/
+
 
 
 function positionUpdate(t, speed) {
@@ -185,7 +194,7 @@ function move(d){
 // Funktion beim Drop
 function stop(t) {
  var posX = $('#' + t.id).position().left;
- var posY = 0;
+ var posY = spaceT;
  var d = dataset.task;
   
   // Task auf alte Position zuruecksetzen 
@@ -203,7 +212,6 @@ function stop(t) {
     t.state = t.state + 1;
     // percent_completed anpassen
     t.percent_completed = (t.state - 1) / dataset.Columns.length;
-
     
     // letzten Tasks der neuen Spalte finden
     for (var i = 0; i < d.length; i++) {
@@ -222,10 +230,9 @@ function stop(t) {
       //Porgress Update
       .select(".progress").attr("points", setProgressGraph(t,1))
       .duration(600);
-    if (posY == 0) {stateUpdate(t.before, t.after); t.before = null;}  
+    if (posY == spaceT) {stateUpdate(t.before, t.after); t.before = null;}  
     t.after = null;
     
-    //doneUpdate();
   }
 }
 
@@ -235,7 +242,7 @@ var position = function(state, before){
   var y, x;
   x = state*(task_width + spaceR);
   
-  if (before == null) { y = 0; }
+  if (before == null) { y = spaceT; }
   else {
     y = $('#' + before).position().top + task_height + spaceB - tbY;
   } 
@@ -258,7 +265,7 @@ function timerTick() {
 
 
 // Button fuer Zeit ein/aus
-var update = function() {
+var doTheClick = function() {
   if ((bClick%2) == 0) {
     alert("timer on");
     interval = setInterval(timerTick,1000);
@@ -301,26 +308,74 @@ var renderTask = function() {
   // Zeitgraph
   taskboard.append("polygon")
     .attr("points", function(d){ return setTimeGraph(d,0,1) })
-    .style("fill", "red")
+    .attr("fill", "#ef3c39")
     .attr("class", "timer");
     
   // Fortschrittsgraph  
   taskboard.append("polygon")
     .attr("points", function(d){ return setProgressGraph(d,1) })
-    .style("fill", "#00a99d")
-    .attr("class", "progress");
-
-  
-
-
-    
+    .attr("fill", "#00a99d")
+    .attr("class", "progress");    
 }
 
 
 //rendert das Taskboard
 var renderTaskboard = function(){
-  
+var dist = 0;
+ var taskboard = d3.select("#taskboard")
+                
+      taskboard.append("text")
+      .attr("x", dist)
+      .attr("y", 15)
+      .text("Backlog");
 
+      dist += task_width+spaceR;
+    
+      taskboard.append("text").selectAll("tspan")
+        .data(dataset.Columns)
+        .enter()
+        .append("tspan")
+        .attr("x", function(d,i){ return(dist *(i+1))})
+        .attr("y", 15)
+        .text(function(d){ return d.id});
+        
+      taskboard.selectAll("line")
+        .data(dataset.Columns)
+        .enter()
+        .append("line")
+          .attr("x1", function(d,i){ return(dist*(i+1))})
+          .attr("y1", spaceT-15)
+          .attr("x2", function(d,j){ return((dist*(j+1))+task_width)})
+          .attr("y2", spaceT-15);
+          
+            
+      taskboard.append("line")
+        .attr("x1", 0)
+        .attr("y1", spaceT-15)
+        .attr("x2", task_width)
+        .attr("y2", spaceT-15);
+        
+       dist += (task_width+spaceR)* dataset.Columns.length;
+               
+      taskboard.append("text")
+        .attr("x", dist)
+        .attr("y", 15)
+        .text("Backlog");
+        
+      taskboard.append("line")
+        .attr("x1", dist)
+        .attr("y1", spaceT-15)
+        .attr("x2", (task_width+dist))
+        .attr("y2", spaceT-15);
+        
+      taskboard.selectAll("line")
+        .attr("stroke-width", 3)
+        .attr("stroke", "black");
+      taskboard.selectAll("text")
+        .attr("font-size", "20px")
+        .attr("font-family", "Helvetica")
+        .attr("fill", "black");
+ 
 }
 
 
@@ -328,7 +383,7 @@ var renderTaskboard = function(){
 if (Meteor.isClient) {
 
   Meteor.startup(function() {
-    $('#timeswitch').click(update);
+    $('#timeswitch').click(doTheClick);
         $('#Dreiecke').click(function(){Rechteck = false; renderTask()});
     $('#Rechtecke').click(function(){Rechteck = true; renderTask()});
 
@@ -337,8 +392,9 @@ if (Meteor.isClient) {
   Template.board.rendered = function() {
      tbX = $('#taskboard').position().left;
      tbY = $('#taskboard').position().top;
-     renderTaskboard();
+     
      renderTask();
+     renderTaskboard();
   }
 }
 
