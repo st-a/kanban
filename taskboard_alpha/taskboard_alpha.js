@@ -1,6 +1,6 @@
 // globale Var
 
-  var task_width = 150, task_height = 70;
+  var task_width = 150, task_height = 80;
 
 // Position der SVG im Browser
   var tbX,tbY;
@@ -31,7 +31,7 @@ function setTimeGraph(d,t,s) {
   else {
     return ("0,0 0," + task_height + " " +
            task_width/s + "," + task_height + " " +
-           task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
+           task_width/s + "," + 0)
   }
 }
 else{
@@ -65,35 +65,26 @@ function setProgressGraph(d,s) {
 }
 
 
-/*function update() {
-  var d = dataset.task;
-  
-  for (var i = 0; i < d.length; i++) {
-    if ((d[i].state > 0) && (d[i].state < (dataset.Columns.length+1))) {
+function update() {
+  d = dataset.task
+ for (var i = 0; i < d.length; i++) {
       if (d[i].percent_completed > d[i].percent_average_completition_time) {
-        d3.select('#' + d[i].id).selectAll('polygon').remove();
-        
-          // Fortschrittsgraph  
-  d3.select('#' + d[i].id).append("polygon")
-
-    .attr("fill", "#00a99d")
-    .attr("class", "progress")
-      .transition()
-    .attr("points", function(d){ return setProgressGraph(d,1) }).duration(600);;
-        
+        d3.select('#' + d[i].id).select(".timer").remove();
         d3.select('#' + d[i].id).append("polygon")
-
-    .attr("fill", "#82bfbf")
-    .attr("class", "timer")
-            .transition()
-    .attr("points", function(d){ return setTimeGraph(d,0,1) }).duration(600);;
-    
- 
+        .attr("class", "timer")
+        .attr("points", setTimeGraph(d[i],0,1))
+        .attr("fill", "#82bfbf");
     }
+     if (d[i].percent_completed < d[i].percent_average_completition_time) {
+                d3.select('#' + d[i].id).select(".timer").remove();
+        d3.select('#' + d[i].id).insert("polygon","polygon")
+        .attr("class", "timer")
+        .attr("points", setTimeGraph(d[i],0,1))
+            .attr("fill", "#ef3c39")
+     }
   }
-
 }
-}*/
+
 
 
 
@@ -213,6 +204,7 @@ function stop(t) {
     // percent_completed anpassen
     t.percent_completed = (t.state - 1) / dataset.Columns.length;
     
+
     // letzten Tasks der neuen Spalte finden
     for (var i = 0; i < d.length; i++) {
       if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
@@ -232,6 +224,7 @@ function stop(t) {
       .duration(600);
     if (posY == spaceT) {stateUpdate(t.before, t.after); t.before = null;}  
     t.after = null;
+        update();
     
   }
 }
@@ -252,7 +245,7 @@ var position = function(state, before){
 
 function timerTick() {
   var d = dataset.task
-  
+    update();
   for (var i = 0; i < d.length; i++) {
     if ((d[i].state != 0) && (d[i].state != (dataset.Columns.length+1))) {
       if(d[i].percent_average_completition_time <= 2) {
@@ -315,7 +308,15 @@ var renderTask = function() {
   taskboard.append("polygon")
     .attr("points", function(d){ return setProgressGraph(d,1) })
     .attr("fill", "#00a99d")
-    .attr("class", "progress");    
+    .attr("class", "progress");
+    
+    
+  /*d3.selectAll("g").selectAll("line").data(dataset.Columns).enter().
+    .append("line")
+    .attr("x1", function(d,i){task})
+    .attr("y1", )
+    .attr("x2", (task_width+dist))
+    .attr("y2", spaceT-15);*/
 }
 
 
@@ -395,6 +396,7 @@ if (Meteor.isClient) {
      
      renderTask();
      renderTaskboard();
+     update();
   }
 }
 
