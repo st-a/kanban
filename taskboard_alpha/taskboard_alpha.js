@@ -1,6 +1,6 @@
 // globale Var
 
-  var task_width = 150, task_height = 80;
+  var task_width = 160, task_height = 40;
 
 // Position der SVG im Browser
   var tbX,tbY;
@@ -72,7 +72,7 @@ function update() {
 
       if (d[i].percent_completed > d[i].percent_average_completition_time) {
         d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).append("polygon")
+        d3.select('#' + d[i].id).insert("polygon", "line")
         .attr("class", "timer")
         .attr("points", setTimeGraph(d[i],0,1))
         .attr("fill", "#82bfbf");
@@ -89,12 +89,12 @@ function update() {
     else{
       if (d[i].percent_completed > d[i].percent_average_completition_time) {
         d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).append("polygon")
+        d3.select('#' + d[i].id).insert("polygon", "line")
         .attr("class", "timer")
         .attr("points", setTimeGraph(d[i],0,1))
         .attr("fill", "#808080");
     }
-     if (d[i].percent_completed < d[i].percent_average_completition_time) {
+     if (d[i].percent_completed <= d[i].percent_average_completition_time) {
                 d3.select('#' + d[i].id).select(".progress")
             .attr("fill", "#808080")
      }
@@ -294,7 +294,7 @@ var renderTask = function() {
   // falls wir updaten, alle alten <g> loeschen
   d3.select("#taskboard").selectAll("g").remove();
 
-  var taskboard = d3.select("#taskboard").selectAll("g")
+  var taskboard = d3.select("#taskboard").selectAll()
   // Datenanbindung
   .data(dataset.task).enter()
   
@@ -328,12 +328,6 @@ var renderTask = function() {
     .attr("class", "progress");
     
     
-  /*d3.selectAll("g").selectAll("line").data(dataset.Columns).enter().
-    .append("line")
-    .attr("x1", function(d,i){task})
-    .attr("y1", )
-    .attr("x2", (task_width+dist))
-    .attr("y2", spaceT-15);*/
 }
 
 
@@ -386,13 +380,25 @@ var dist = 0;
         .attr("x2", (task_width+dist))
         .attr("y2", spaceT-15);
         
+      taskboard.selectAll("g").selectAll("line").data(dataset.Columns).enter()
+        .append("line")
+        .attr("x1", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
+        .attr("y1", 0)
+        .attr("x2", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
+        .attr("y2", task_height); 
+        
       taskboard.selectAll("line")
         .attr("stroke-width", 3)
         .attr("stroke", "black");
+      taskboard.selectAll("g").selectAll("line")
+        .attr("stroke-width", 1)
+        .attr("stroke", "#c0c0c0");
       taskboard.selectAll("text")
         .attr("font-size", "20px")
         .attr("font-family", "Helvetica")
         .attr("fill", "black");
+        
+             update();
  
 }
 
@@ -402,8 +408,8 @@ if (Meteor.isClient) {
 
   Meteor.startup(function() {
     $('#timeswitch').click(doTheClick);
-        $('#Dreiecke').click(function(){Rechteck = false; renderTask()});
-    $('#Rechtecke').click(function(){Rechteck = true; renderTask()});
+        $('#Dreiecke').click(function(){Rechteck = false; renderTask(); renderTaskboard();});
+    $('#Rechtecke').click(function(){Rechteck = true; renderTask(); renderTaskboard();});
 
   });
 
@@ -413,7 +419,6 @@ if (Meteor.isClient) {
      
      renderTask();
      renderTaskboard();
-     update();
   }
 }
 
