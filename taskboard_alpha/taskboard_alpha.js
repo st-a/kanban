@@ -68,6 +68,8 @@ function setProgressGraph(d,s) {
 function update() {
   d = dataset.task
  for (var i = 0; i < d.length; i++) {
+      if (d[i].state < dataset.Columns.length+1) {
+
       if (d[i].percent_completed > d[i].percent_average_completition_time) {
         d3.select('#' + d[i].id).select(".timer").remove();
         d3.select('#' + d[i].id).append("polygon")
@@ -83,6 +85,21 @@ function update() {
             .attr("fill", "#ef3c39")
      }
   }
+    
+    else{
+      if (d[i].percent_completed > d[i].percent_average_completition_time) {
+        d3.select('#' + d[i].id).select(".timer").remove();
+        d3.select('#' + d[i].id).append("polygon")
+        .attr("class", "timer")
+        .attr("points", setTimeGraph(d[i],0,1))
+        .attr("fill", "#808080");
+    }
+     if (d[i].percent_completed < d[i].percent_average_completition_time) {
+                d3.select('#' + d[i].id).select(".progress")
+            .attr("fill", "#808080")
+     }
+    }
+}
 }
 
 
@@ -361,7 +378,7 @@ var dist = 0;
       taskboard.append("text")
         .attr("x", dist)
         .attr("y", 15)
-        .text("Backlog");
+        .text("Done");
         
       taskboard.append("line")
         .attr("x1", dist)
