@@ -33,7 +33,6 @@
 + Zeit berechnen
 + Möglichkeit von Deadlines prüfen
 + Deformation der Tasks bei überschreiten der durchschnittlichen Durchlaufzeit
-+ Prozessübergänge in Tasks durch Linien markieren
 + Ressourcen
   + Spalten limitieren
   + Höhe als Faktor für Durchschnittszeit
