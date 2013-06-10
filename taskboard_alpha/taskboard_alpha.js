@@ -103,25 +103,22 @@ function update() {
 }
 
 
-
-
 function positionUpdate(t, speed) {
   var a; // Nachfolgertask
-  var d = dataset.task;
   var posX = $('#' + t.id).position().left - tbX;
   var posY = $('#' + t.id).position().top - tbY;
   
   d3.selectAll("#" + t.id)
-    .transition()
-    .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
-    .duration(speed);
+  .transition()
+  .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
+  .duration(speed);
   
   // falls Nachfolgertask vorhanden mit nachruecken    
   if(t.after != null){
-    for (var i = 0; i < d.length; i++){
-      if (t.after == d[i].id) { a = d[i] }
+    for (var i = 0; i < dataset.task.length; i++){
+      if (t.after == dataset.task[i].id) { a = dataset.task[i] }
     }
-   positionUpdate(a, speed+100);
+    positionUpdate(a, speed+100);
   }
 }
 
