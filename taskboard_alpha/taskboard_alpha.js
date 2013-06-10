@@ -126,15 +126,13 @@ function positionUpdate(t, speed) {
 // Tasks neu verknuepfen
 // Vorgaenger und Nachfolger des Dragtasks
 function stateUpdate(b,a) {
-  var d = dataset.task;
-  
   // keinen Nachfolger
   if(a == null){
     // aber Vorgaenger
     if(b != null){
       // id to object
-      for (var i = 0; i < d.length; i++){
-        if (d[i].id == b) { b = d[i]; } 
+      for (var i = 0; i < dataset.task.length; i++){
+        if (dataset.task[i].id == b) { b = dataset.task[i]; } 
       }
     // Vorgaenger hat keinen Nachfolger mehr  
     b.after = null;
@@ -145,9 +143,9 @@ function stateUpdate(b,a) {
     // und Vorgaenger
     if (b != null) {
       // id to object
-      for (var i = 0; i < d.length; i++){
-        if (d[i].id == b) { b = d[i]; }
-        if (d[i].id == a) { a = d[i]; }
+      for (var i = 0; i < dataset.task.length; i++){
+        if (dataset.task[i].id == b) { b = dataset.task[i]; }
+        if (dataset.task[i].id == a) { a = dataset.task[i]; }
       }
     // verknuepfen des Tasks  
     a.before = b.id;
@@ -156,8 +154,8 @@ function stateUpdate(b,a) {
     // Nachfolger aber keinen Vorgaenger  
     else {
       // id to object
-      for (var i = 0; i < d.length; i++){
-        if (d[i].id == a) { a = d[i]; } 
+      for (var i = 0; i < dataset.task.length; i++){
+        if (dataset.task[i].id == a) { a = dataset.task[i]; } 
       }
       a.before = null;
     }
@@ -200,7 +198,6 @@ function move(d){
 function stop(t) {
  var posX = $('#' + t.id).position().left;
  var posY = spaceT;
- var d = dataset.task;
   
   // Task auf alte Position zuruecksetzen 
   if((posX < (oldX+(task_width+spaceR)-task_width/3)) || (posX > oldX+(2*task_width))){
@@ -220,13 +217,13 @@ function stop(t) {
     
 
     // letzten Tasks der neuen Spalte finden
-    for (var i = 0; i < d.length; i++) {
-      if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
+    for (var i = 0; i < dataset.task.length; i++) {
+      if ((t.state == dataset.task[i].state) && (dataset.task[i].after == null) && (t.id != dataset.task[i].id)) {
         // Position unter den letzten Task
-        posY = $('#' + d[i].id).position().top + task_height + spaceB - tbY;
-        d[i].after = t.id;
+        posY = $('#' + dataset.task[i].id).position().top + task_height + spaceB - tbY;
+        dataset.task[i].after = t.id;
         stateUpdate(t.before, t.after);
-        t.before = d[i].id;
+        t.before = dataset.task[i].id;
       }  
     }
     
@@ -238,8 +235,7 @@ function stop(t) {
       .duration(600);
     if (posY == spaceT) {stateUpdate(t.before, t.after); t.before = null;}  
     t.after = null;
-        update();
-    
+    update();
   }
 }
 
@@ -258,13 +254,12 @@ var position = function(state, before){
 
 
 function timerTick() {
-  var d = dataset.task
-    update();
-  for (var i = 0; i < d.length; i++) {
-    if ((d[i].state != 0) && (d[i].state != (dataset.Columns.length+1))) {
-      if(d[i].percent_average_completition_time <= 2) {
-        var point = setTimeGraph(d[i], 0.01,1);
-        d3.select('#' + d[i].id).select(".timer").transition().attr("points", point);
+  update();
+  for (var i = 0; i < dataset.task.length; i++) {
+    if ((dataset.task[i].state != 0) && (dataset.task[i].state != (dataset.Columns.length+1))) {
+      if(dataset.task[i].percent_average_completition_time <= 2) {
+        var point = setTimeGraph(dataset.task[i], 0.01,1);
+        d3.select('#' + dataset.task[i].id).select(".timer").transition().attr("points", point);
       }
     }
   }
