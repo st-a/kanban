@@ -66,40 +66,40 @@ function setProgressGraph(d,s) {
 
 
 function update() {
-  d = dataset.task
- for (var i = 0; i < d.length; i++) {
-      if (d[i].state < dataset.Columns.length+1) {
+  for (var i = 0; i < dataset.task.length; i++) {
+    if (dataset.task[i].state < dataset.Columns.length+1) {
 
-      if (d[i].percent_completed > d[i].percent_average_completition_time) {
-        d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).insert("polygon", "line")
+      if (dataset.task[i].percent_completed > dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".timer").remove();
+        d3.select('#' + dataset.task[i].id).insert("polygon", "line")
         .attr("class", "timer")
-        .attr("points", setTimeGraph(d[i],0,1))
+        .attr("points", setTimeGraph(dataset.task[i],0,1))
         .attr("fill", "#82bfbf");
-    }
-     if (d[i].percent_completed < d[i].percent_average_completition_time) {
-                d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).insert("polygon","polygon")
+      }
+
+      if (dataset.task[i].percent_completed < dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".timer").remove();
+        d3.select('#' + dataset.task[i].id).insert("polygon","polygon")
         .attr("class", "timer")
-        .attr("points", setTimeGraph(d[i],0,1))
-            .attr("fill", "#ef3c39")
-     }
-  }
+        .attr("points", setTimeGraph(dataset.task[i],0,1))
+        .attr("fill", "#ef3c39")
+      }
+    }
     
     else{
-      if (d[i].percent_completed > d[i].percent_average_completition_time) {
-        d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).insert("polygon", "line")
+      if (dataset.task[i].percent_completed > dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".timer").remove();
+        d3.select('#' + dataset.task[i].id).insert("polygon", "line")
         .attr("class", "timer")
-        .attr("points", setTimeGraph(d[i],0,1))
+        .attr("points", setTimeGraph(dataset.task[i],0,1))
         .attr("fill", "#808080");
+      }
+      if (dataset.task[i].percent_completed <= dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".progress")
+        .attr("fill", "#808080")
+      }
     }
-     if (d[i].percent_completed <= d[i].percent_average_completition_time) {
-                d3.select('#' + d[i].id).select(".progress")
-            .attr("fill", "#808080")
-     }
-    }
-}
+  }
 }
 
 
