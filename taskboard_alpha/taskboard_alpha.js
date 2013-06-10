@@ -1,6 +1,6 @@
 // globale Var
 
-  var task_width = 160, task_height = 40;
+  var task_width = 160, task_height = 70;
 
 // Position der SVG im Browser
   var tbX,tbY;
