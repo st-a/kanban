@@ -16,6 +16,9 @@
 //Rechteck-Variable
 var Rechteck = false;
 
+// Datenbank Objekte anlegen
+Tasks = new Meteor.Collection("tasks");
+Columns = new Meteor.Collection("columns");
 
 
 function setTimeGraph(d,t,s) {
@@ -419,6 +422,20 @@ if (Meteor.isClient) {
 ////// SERVER
 if (Meteor.isServer) {
   Meteor.startup(function() {
-    // code to run on server at startup
+
+    // wenn die Datenbank leer ist, mit Beispielen fuellen
+    if (Tasks.find().count() === 0 && Columns.find().count() === 0) {
+      // leere Tasks anlegen
+      Tasks.insert({"id":"Login", "percent_completed":0, "percent_average_completition_time":0 , "state": 0, "before":null ,"after":"Nutzersteuerung"});
+      Tasks.insert({"id":"Nutzersteuerung", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Login" ,"after":"Eingabe"});
+      Tasks.insert({"id":"Eingabe", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Nutzersteuerung" ,"after":"Management"});
+      Tasks.insert({"id":"Management", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Eingabe" ,"after":null});
+
+      // Spalten anlegen
+      Columns.insert({"id":"Entwerfen"});
+      Columns.insert({"id":"Umsetzen"});
+      Columns.insert({"id":"Ausliefern"});
+    }
+
   });
 }
