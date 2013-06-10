@@ -1,18 +1,21 @@
 // globale Var
-
-  var task_width = 160, task_height = 40;
+var task_width = 160, task_height = 40;
 
 // Position der SVG im Browser
-  var tbX,tbY;
+var tbX,tbY;
+
 // Abstand nach rechts/unter
-  var spaceR = 30;
-  var spaceB = 10;
-  var spaceT = 40;
+var spaceR = 30;
+var spaceB = 10;
+var spaceT = 40;
+
 // Hilfsvariablen fuer DandD
-  var mTask, oldX, oldY;
+var mTask, oldX, oldY;
+
 // Timervariablen
-  var bClick = 0;
-  var interval;
+var bClick = 0;
+var interval;
+
 //Rechteck-Variable
 var Rechteck = false;
 
@@ -26,33 +29,29 @@ function setTimeGraph(d,t,s) {
   
   if (Rechteck==true) {
   
-  if (d.percent_average_completition_time <= 1) {
-   return ("0,0 0," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + "," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + ",0")
-  }
-  else {
-    return ("0,0 0," + task_height + " " +
-           task_width/s + "," + task_height + " " +
-           task_width/s + "," + 0)
-  }
-}
-else{
-  
-  
     if (d.percent_average_completition_time <= 1) {
-   return ("0,0 0," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + "," + task_height)
+     return ("0,0 0," + task_height + " " +
+            ((task_width/s) * d.percent_average_completition_time) + "," + task_height + " " +
+            ((task_width/s) * d.percent_average_completition_time) + ",0")
+    }
+    else {
+      return ("0,0 0," + task_height + " " +
+             task_width/s + "," + task_height + " " +
+             task_width/s + "," + 0)
+    }
   }
-  else {
-    return ("0,0 0," + task_height + " " +
-           task_width/s + "," + task_height + " " +
-           task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
-  } 
+  else{
+    if (d.percent_average_completition_time <= 1) {
+      return ("0,0 0," + task_height + " " +
+             ((task_width/s) * d.percent_average_completition_time) + "," + task_height)
+    }
+    else {
+      return ("0,0 0," + task_height + " " +
+             task_width/s + "," + task_height + " " +
+             task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
+    } 
+  }
 }
-
-}
-
 
 
 function setProgressGraph(d,s) {
@@ -328,73 +327,72 @@ var renderTask = function() {
 
 //rendert das Taskboard
 var renderTaskboard = function(){
-var dist = 0;
- var taskboard = d3.select("#taskboard")
-                
-      taskboard.append("text")
-      .attr("x", dist)
-      .attr("y", 15)
-      .text("Backlog");
-
-      dist += task_width+spaceR;
-    
-      taskboard.append("text").selectAll("tspan")
-        .data(dataset.Columns)
-        .enter()
-        .append("tspan")
-        .attr("x", function(d,i){ return(dist *(i+1))})
-        .attr("y", 15)
-        .text(function(d){ return d.id});
-        
-      taskboard.selectAll("line")
-        .data(dataset.Columns)
-        .enter()
-        .append("line")
-          .attr("x1", function(d,i){ return(dist*(i+1))})
-          .attr("y1", spaceT-15)
-          .attr("x2", function(d,j){ return((dist*(j+1))+task_width)})
-          .attr("y2", spaceT-15);
-          
+  var dist = 0;
+  var taskboard = d3.select("#taskboard")
             
-      taskboard.append("line")
-        .attr("x1", 0)
-        .attr("y1", spaceT-15)
-        .attr("x2", task_width)
-        .attr("y2", spaceT-15);
+  taskboard.append("text")
+    .attr("x", dist)
+    .attr("y", 15)
+    .text("Backlog");
+
+  dist += task_width+spaceR;
+
+  taskboard.append("text").selectAll("tspan")
+    .data(dataset.Columns)
+    .enter()
+    .append("tspan")
+    .attr("x", function(d,i){ return(dist *(i+1))})
+    .attr("y", 15)
+    .text(function(d){ return d.id});
+    
+  taskboard.selectAll("line")
+    .data(dataset.Columns)
+    .enter()
+    .append("line")
+      .attr("x1", function(d,i){ return(dist*(i+1))})
+      .attr("y1", spaceT-15)
+      .attr("x2", function(d,j){ return((dist*(j+1))+task_width)})
+      .attr("y2", spaceT-15);
+      
         
-       dist += (task_width+spaceR)* dataset.Columns.length;
-               
-      taskboard.append("text")
-        .attr("x", dist)
-        .attr("y", 15)
-        .text("Done");
-        
-      taskboard.append("line")
-        .attr("x1", dist)
-        .attr("y1", spaceT-15)
-        .attr("x2", (task_width+dist))
-        .attr("y2", spaceT-15);
-        
-      taskboard.selectAll("g").selectAll("line").data(dataset.Columns).enter()
-        .append("line")
-        .attr("x1", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
-        .attr("y1", 0)
-        .attr("x2", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
-        .attr("y2", task_height); 
-        
-      taskboard.selectAll("line")
-        .attr("stroke-width", 3)
-        .attr("stroke", "black");
-      taskboard.selectAll("g").selectAll("line")
-        .attr("stroke-width", 1)
-        .attr("stroke", "#c0c0c0");
-      taskboard.selectAll("text")
-        .attr("font-size", "20px")
-        .attr("font-family", "Helvetica")
-        .attr("fill", "black");
-        
-             update();
- 
+  taskboard.append("line")
+    .attr("x1", 0)
+    .attr("y1", spaceT-15)
+    .attr("x2", task_width)
+    .attr("y2", spaceT-15);
+    
+  dist += (task_width+spaceR)* dataset.Columns.length;
+           
+  taskboard.append("text")
+    .attr("x", dist)
+    .attr("y", 15)
+    .text("Done");
+    
+  taskboard.append("line")
+    .attr("x1", dist)
+    .attr("y1", spaceT-15)
+    .attr("x2", (task_width+dist))
+    .attr("y2", spaceT-15);
+    
+  taskboard.selectAll("g").selectAll("line").data(dataset.Columns).enter()
+    .append("line")
+    .attr("x1", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
+    .attr("y1", 0)
+    .attr("x2", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
+    .attr("y2", task_height); 
+    
+  taskboard.selectAll("line")
+    .attr("stroke-width", 3)
+    .attr("stroke", "black");
+  taskboard.selectAll("g").selectAll("line")
+    .attr("stroke-width", 1)
+    .attr("stroke", "#c0c0c0");
+  taskboard.selectAll("text")
+    .attr("font-size", "20px")
+    .attr("font-family", "Helvetica")
+    .attr("fill", "black");
+    
+  update();
 }
 
 
