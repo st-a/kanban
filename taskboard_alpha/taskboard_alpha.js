@@ -1,21 +1,27 @@
 // globale Var
-
-  var task_width = 160, task_height = 70;
+var task_width = 160, task_height = 40;
 
 // Position der SVG im Browser
-  var tbX,tbY;
+var tbX,tbY;
+
 // Abstand nach rechts/unter
-  var spaceR = 30;
-  var spaceB = 10;
-  var spaceT = 40;
+var spaceR = 30;
+var spaceB = 10;
+var spaceT = 40;
+
 // Hilfsvariablen fuer DandD
-  var mTask, oldX, oldY;
+var mTask, oldX, oldY;
+
 // Timervariablen
-  var bClick = 0;
-  var interval;
+var bClick = 0;
+var interval;
+
 //Rechteck-Variable
 var Rechteck = false;
 
+// Datenbank Objekte anlegen
+Tasks = new Meteor.Collection("tasks");
+Columns = new Meteor.Collection("columns");
 
 
 function setTimeGraph(d,t,s) {
@@ -23,33 +29,29 @@ function setTimeGraph(d,t,s) {
   
   if (Rechteck==true) {
   
-  if (d.percent_average_completition_time <= 1) {
-   return ("0,0 0," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + "," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + ",0")
-  }
-  else {
-    return ("0,0 0," + task_height + " " +
-           task_width/s + "," + task_height + " " +
-           task_width/s + "," + 0)
-  }
-}
-else{
-  
-  
     if (d.percent_average_completition_time <= 1) {
-   return ("0,0 0," + task_height + " " +
-          ((task_width/s) * d.percent_average_completition_time) + "," + task_height)
+     return ("0,0 0," + task_height + " " +
+            ((task_width/s) * d.percent_average_completition_time) + "," + task_height + " " +
+            ((task_width/s) * d.percent_average_completition_time) + ",0")
+    }
+    else {
+      return ("0,0 0," + task_height + " " +
+             task_width/s + "," + task_height + " " +
+             task_width/s + "," + 0)
+    }
   }
-  else {
-    return ("0,0 0," + task_height + " " +
-           task_width/s + "," + task_height + " " +
-           task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
-  } 
+  else{
+    if (d.percent_average_completition_time <= 1) {
+      return ("0,0 0," + task_height + " " +
+             ((task_width/s) * d.percent_average_completition_time) + "," + task_height)
+    }
+    else {
+      return ("0,0 0," + task_height + " " +
+             task_width/s + "," + task_height + " " +
+             task_width/s + "," + (task_height - task_height*(d.percent_average_completition_time-1)) )
+    } 
+  }
 }
-
-}
-
 
 
 function setProgressGraph(d,s) {
@@ -66,62 +68,59 @@ function setProgressGraph(d,s) {
 
 
 function update() {
-  d = dataset.task
- for (var i = 0; i < d.length; i++) {
-      if (d[i].state < dataset.Columns.length+1) {
+  for (var i = 0; i < dataset.task.length; i++) {
+    if (dataset.task[i].state < dataset.Columns.length+1) {
 
-      if (d[i].percent_completed > d[i].percent_average_completition_time) {
-        d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).insert("polygon", "line")
+      if (dataset.task[i].percent_completed > dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".timer").remove();
+        d3.select('#' + dataset.task[i].id).insert("polygon", "line")
         .attr("class", "timer")
-        .attr("points", setTimeGraph(d[i],0,1))
+        .attr("points", setTimeGraph(dataset.task[i],0,1))
         .attr("fill", "#82bfbf");
-    }
-     if (d[i].percent_completed < d[i].percent_average_completition_time) {
-                d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).insert("polygon","polygon")
+      }
+
+      if (dataset.task[i].percent_completed < dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".timer").remove();
+        d3.select('#' + dataset.task[i].id).insert("polygon","polygon")
         .attr("class", "timer")
-        .attr("points", setTimeGraph(d[i],0,1))
-            .attr("fill", "#ef3c39")
-     }
-  }
+        .attr("points", setTimeGraph(dataset.task[i],0,1))
+        .attr("fill", "#ef3c39")
+      }
+    }
     
     else{
-      if (d[i].percent_completed > d[i].percent_average_completition_time) {
-        d3.select('#' + d[i].id).select(".timer").remove();
-        d3.select('#' + d[i].id).insert("polygon", "line")
+      if (dataset.task[i].percent_completed > dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".timer").remove();
+        d3.select('#' + dataset.task[i].id).insert("polygon", "line")
         .attr("class", "timer")
-        .attr("points", setTimeGraph(d[i],0,1))
+        .attr("points", setTimeGraph(dataset.task[i],0,1))
         .attr("fill", "#808080");
+      }
+      if (dataset.task[i].percent_completed <= dataset.task[i].percent_average_completition_time) {
+        d3.select('#' + dataset.task[i].id).select(".progress")
+        .attr("fill", "#808080")
+      }
     }
-     if (d[i].percent_completed <= d[i].percent_average_completition_time) {
-                d3.select('#' + d[i].id).select(".progress")
-            .attr("fill", "#808080")
-     }
-    }
+  }
 }
-}
-
-
 
 
 function positionUpdate(t, speed) {
   var a; // Nachfolgertask
-  var d = dataset.task;
   var posX = $('#' + t.id).position().left - tbX;
   var posY = $('#' + t.id).position().top - tbY;
   
   d3.selectAll("#" + t.id)
-    .transition()
-    .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
-    .duration(speed);
+  .transition()
+  .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
+  .duration(speed);
   
   // falls Nachfolgertask vorhanden mit nachruecken    
   if(t.after != null){
-    for (var i = 0; i < d.length; i++){
-      if (t.after == d[i].id) { a = d[i] }
+    for (var i = 0; i < dataset.task.length; i++){
+      if (t.after == dataset.task[i].id) { a = dataset.task[i] }
     }
-   positionUpdate(a, speed+100);
+    positionUpdate(a, speed+100);
   }
 }
 
@@ -129,15 +128,13 @@ function positionUpdate(t, speed) {
 // Tasks neu verknuepfen
 // Vorgaenger und Nachfolger des Dragtasks
 function stateUpdate(b,a) {
-  var d = dataset.task;
-  
   // keinen Nachfolger
   if(a == null){
     // aber Vorgaenger
     if(b != null){
       // id to object
-      for (var i = 0; i < d.length; i++){
-        if (d[i].id == b) { b = d[i]; } 
+      for (var i = 0; i < dataset.task.length; i++){
+        if (dataset.task[i].id == b) { b = dataset.task[i]; } 
       }
     // Vorgaenger hat keinen Nachfolger mehr  
     b.after = null;
@@ -148,9 +145,9 @@ function stateUpdate(b,a) {
     // und Vorgaenger
     if (b != null) {
       // id to object
-      for (var i = 0; i < d.length; i++){
-        if (d[i].id == b) { b = d[i]; }
-        if (d[i].id == a) { a = d[i]; }
+      for (var i = 0; i < dataset.task.length; i++){
+        if (dataset.task[i].id == b) { b = dataset.task[i]; }
+        if (dataset.task[i].id == a) { a = dataset.task[i]; }
       }
     // verknuepfen des Tasks  
     a.before = b.id;
@@ -159,8 +156,8 @@ function stateUpdate(b,a) {
     // Nachfolger aber keinen Vorgaenger  
     else {
       // id to object
-      for (var i = 0; i < d.length; i++){
-        if (d[i].id == a) { a = d[i]; } 
+      for (var i = 0; i < dataset.task.length; i++){
+        if (dataset.task[i].id == a) { a = dataset.task[i]; } 
       }
       a.before = null;
     }
@@ -203,7 +200,6 @@ function move(d){
 function stop(t) {
  var posX = $('#' + t.id).position().left;
  var posY = spaceT;
- var d = dataset.task;
   
   // Task auf alte Position zuruecksetzen 
   if((posX < (oldX+(task_width+spaceR)-task_width/3)) || (posX > oldX+(2*task_width))){
@@ -223,13 +219,13 @@ function stop(t) {
     
 
     // letzten Tasks der neuen Spalte finden
-    for (var i = 0; i < d.length; i++) {
-      if ((t.state == d[i].state) && (d[i].after == null) && (t.id != d[i].id)) {
+    for (var i = 0; i < dataset.task.length; i++) {
+      if ((t.state == dataset.task[i].state) && (dataset.task[i].after == null) && (t.id != dataset.task[i].id)) {
         // Position unter den letzten Task
-        posY = $('#' + d[i].id).position().top + task_height + spaceB - tbY;
-        d[i].after = t.id;
+        posY = $('#' + dataset.task[i].id).position().top + task_height + spaceB - tbY;
+        dataset.task[i].after = t.id;
         stateUpdate(t.before, t.after);
-        t.before = d[i].id;
+        t.before = dataset.task[i].id;
       }  
     }
     
@@ -241,8 +237,7 @@ function stop(t) {
       .duration(600);
     if (posY == spaceT) {stateUpdate(t.before, t.after); t.before = null;}  
     t.after = null;
-        update();
-    
+    update();
   }
 }
 
@@ -261,13 +256,12 @@ var position = function(state, before){
 
 
 function timerTick() {
-  var d = dataset.task
-    update();
-  for (var i = 0; i < d.length; i++) {
-    if ((d[i].state != 0) && (d[i].state != (dataset.Columns.length+1))) {
-      if(d[i].percent_average_completition_time <= 2) {
-        var point = setTimeGraph(d[i], 0.01,1);
-        d3.select('#' + d[i].id).select(".timer").transition().attr("points", point);
+  update();
+  for (var i = 0; i < dataset.task.length; i++) {
+    if ((dataset.task[i].state != 0) && (dataset.task[i].state != (dataset.Columns.length+1))) {
+      if(dataset.task[i].percent_average_completition_time <= 2) {
+        var point = setTimeGraph(dataset.task[i], 0.01,1);
+        d3.select('#' + dataset.task[i].id).select(".timer").transition().attr("points", point);
       }
     }
   }
@@ -333,73 +327,72 @@ var renderTask = function() {
 
 //rendert das Taskboard
 var renderTaskboard = function(){
-var dist = 0;
- var taskboard = d3.select("#taskboard")
-                
-      taskboard.append("text")
-      .attr("x", dist)
-      .attr("y", 15)
-      .text("Backlog");
-
-      dist += task_width+spaceR;
-    
-      taskboard.append("text").selectAll("tspan")
-        .data(dataset.Columns)
-        .enter()
-        .append("tspan")
-        .attr("x", function(d,i){ return(dist *(i+1))})
-        .attr("y", 15)
-        .text(function(d){ return d.id});
-        
-      taskboard.selectAll("line")
-        .data(dataset.Columns)
-        .enter()
-        .append("line")
-          .attr("x1", function(d,i){ return(dist*(i+1))})
-          .attr("y1", spaceT-15)
-          .attr("x2", function(d,j){ return((dist*(j+1))+task_width)})
-          .attr("y2", spaceT-15);
-          
+  var dist = 0;
+  var taskboard = d3.select("#taskboard")
             
-      taskboard.append("line")
-        .attr("x1", 0)
-        .attr("y1", spaceT-15)
-        .attr("x2", task_width)
-        .attr("y2", spaceT-15);
+  taskboard.append("text")
+    .attr("x", dist)
+    .attr("y", 15)
+    .text("Backlog");
+
+  dist += task_width+spaceR;
+
+  taskboard.append("text").selectAll("tspan")
+    .data(dataset.Columns)
+    .enter()
+    .append("tspan")
+    .attr("x", function(d,i){ return(dist *(i+1))})
+    .attr("y", 15)
+    .text(function(d){ return d.id});
+    
+  taskboard.selectAll("line")
+    .data(dataset.Columns)
+    .enter()
+    .append("line")
+      .attr("x1", function(d,i){ return(dist*(i+1))})
+      .attr("y1", spaceT-15)
+      .attr("x2", function(d,j){ return((dist*(j+1))+task_width)})
+      .attr("y2", spaceT-15);
+      
         
-       dist += (task_width+spaceR)* dataset.Columns.length;
-               
-      taskboard.append("text")
-        .attr("x", dist)
-        .attr("y", 15)
-        .text("Done");
-        
-      taskboard.append("line")
-        .attr("x1", dist)
-        .attr("y1", spaceT-15)
-        .attr("x2", (task_width+dist))
-        .attr("y2", spaceT-15);
-        
-      taskboard.selectAll("g").selectAll("line").data(dataset.Columns).enter()
-        .append("line")
-        .attr("x1", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
-        .attr("y1", 0)
-        .attr("x2", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
-        .attr("y2", task_height); 
-        
-      taskboard.selectAll("line")
-        .attr("stroke-width", 3)
-        .attr("stroke", "black");
-      taskboard.selectAll("g").selectAll("line")
-        .attr("stroke-width", 1)
-        .attr("stroke", "#c0c0c0");
-      taskboard.selectAll("text")
-        .attr("font-size", "20px")
-        .attr("font-family", "Helvetica")
-        .attr("fill", "black");
-        
-             update();
- 
+  taskboard.append("line")
+    .attr("x1", 0)
+    .attr("y1", spaceT-15)
+    .attr("x2", task_width)
+    .attr("y2", spaceT-15);
+    
+  dist += (task_width+spaceR)* dataset.Columns.length;
+           
+  taskboard.append("text")
+    .attr("x", dist)
+    .attr("y", 15)
+    .text("Done");
+    
+  taskboard.append("line")
+    .attr("x1", dist)
+    .attr("y1", spaceT-15)
+    .attr("x2", (task_width+dist))
+    .attr("y2", spaceT-15);
+    
+  taskboard.selectAll("g").selectAll("line").data(dataset.Columns).enter()
+    .append("line")
+    .attr("x1", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
+    .attr("y1", 0)
+    .attr("x2", function(d,i){return (task_width+task_width*(i-1))/dataset.Columns.length})
+    .attr("y2", task_height); 
+    
+  taskboard.selectAll("line")
+    .attr("stroke-width", 3)
+    .attr("stroke", "black");
+  taskboard.selectAll("g").selectAll("line")
+    .attr("stroke-width", 1)
+    .attr("stroke", "#c0c0c0");
+  taskboard.selectAll("text")
+    .attr("font-size", "20px")
+    .attr("font-family", "Helvetica")
+    .attr("fill", "black");
+    
+  update();
 }
 
 
@@ -427,6 +420,20 @@ if (Meteor.isClient) {
 ////// SERVER
 if (Meteor.isServer) {
   Meteor.startup(function() {
-    // code to run on server at startup
+
+    // wenn die Datenbank leer ist, mit Beispielen fuellen
+    if (Tasks.find().count() === 0 && Columns.find().count() === 0) {
+      // leere Tasks anlegen
+      Tasks.insert({"id":"Login", "percent_completed":0, "percent_average_completition_time":0 , "state": 0, "before":null ,"after":"Nutzersteuerung"});
+      Tasks.insert({"id":"Nutzersteuerung", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Login" ,"after":"Eingabe"});
+      Tasks.insert({"id":"Eingabe", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Nutzersteuerung" ,"after":"Management"});
+      Tasks.insert({"id":"Management", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Eingabe" ,"after":null});
+
+      // Spalten anlegen
+      Columns.insert({"id":"Entwerfen"});
+      Columns.insert({"id":"Umsetzen"});
+      Columns.insert({"id":"Ausliefern"});
+    }
+
   });
 }
