@@ -1,5 +1,5 @@
 // globale Var
-var task_width = 160, task_height = 40;
+var task_width = 140, task_height = 30;
 
 // Position der SVG im Browser
 var tbX,tbY;
@@ -17,128 +17,147 @@ var bClick = 0;
 var interval;
 
 //Farben
-var taskBg = "rgb(50,50,50)";
-var boardColor = "#ffffff";
-
-//Rechteck-Variable
-var Rechteck = false;
+var taskBg = "rgb(230,230,230)";
+var boardColor = "#000000";
 
 // Datenbank Objekte anlegen
 Tasks = new Meteor.Collection("tasks");
 Columns = new Meteor.Collection("columns");
 
 //verlaengert den Timergraphen um "time"
-//erstellt verzšgerungsdreieck
 var setTimeGraph = function(task,time) {
-  task.percent_average_completition_time = task.percent_average_completition_time + time;
   
-    if (task.percent_average_completition_time <= 1) {
-      return task_width*task.percent_average_completition_time;
+  var currentID = Tasks.findOne({id:task.id})._id;
+  var newTime = Tasks.findOne({id:task.id}).percent_average_completition_time + time;
+  Tasks.update(currentID, {$set:{percent_average_completition_time: newTime}});
+  
+    if (Tasks.findOne({id:task.id}).percent_average_completition_time <= 1) {
+      return task_width*(Tasks.findOne({id:task.id}).percent_average_completition_time);
     }
-    else {
+    else {/*
       d3.select('#' + task.id).select(".overtime").transition()
-      .attr("points", task_width + ",0 " + task_width + "," + task_height + " " + (task_width - (task_width*(task.percent_average_completition_time-1))) + "," + task_height);
+      .attr("points", task_width + ",0 " + task_width + "," + task_height + " " + (task_width - (task_width*(task.percent_average_completition_time-1))) + "," + task_height);*/
       return task_width;
   }
 }
 
 
 var setProgressGraph = function(task) {
-    return (task.progress_state-1) * (task_width/dataset.Columns.length);
+  if (task.progress_state > 0) {
+    return ((task.progress_state-1)*(task_width/dataset.Columns.length));
+  }
+  else return 0;
+}
+
+var setTimerColor = function(task){
+  var color;
+  
+  if (((Tasks.findOne({id:task.id}).progress_state-1)/dataset.Columns.length) <= Tasks.findOne({id:task.id}).percent_average_completition_time)  {
+    var mRed = (-50*3)/(task_width/dataset.Columns.length);
+    var mGray = (150*3)/(task_width/dataset.Columns.length);
+          
+    var distance = (task_width* (Tasks.findOne({id:task.id}).progress_state/dataset.Columns.length)) - d3.select('#' + task.id).select(".timer").attr("width");
+
+    var colorRed = Math.round(distance*mRed + 250);
+    var colorGray = Math.round(distance*mGray + 50);
+          
+    if (colorGray > 200) colorGray = 200;
+    if (colorRed < 200) colorRed = 200;
+    
+  color = "rgb(" + colorRed + "," + colorGray + "," + colorGray + ")";
+  
+  return color
+  }
+  else{
+  color = "#82bfbf";
+  
+  return color;
+  }
 }
 
 
 var update = function() {
+  var TaskArray = Tasks.find().fetch();
   
-  for (var i = 0; i < dataset.task.length; i++) {
+  
+  for (var i = 0; i < Tasks.find().count(); i++) {
     //fuer alle Tasks die nicht im Backlog sind
-    if (!(dataset.task[i].progress_state == 0)) {
+    if (!(TaskArray[i].progress_state == 0)) {
       
       //ist der Fortschritt groesser als der Timer?
-      if (((dataset.task[i].progress_state-1)/dataset.Columns.length) > dataset.task[i].percent_average_completition_time) {
-        d3.select('#' + dataset.task[i].id).select(".timer").remove();
-        d3.select('#' + dataset.task[i].id).insert("rect", "line")
+      if (((TaskArray[i].progress_state-1)/dataset.Columns.length) > TaskArray[i].percent_average_completition_time) {
+        d3.select('#' + TaskArray[i].id).select(".timer").remove();
+        d3.select('#' + TaskArray[i].id).insert("rect", "line")
         .attr("class", "timer")
         .attr("height", task_height)
-        .attr("width", setTimeGraph(dataset.task[i],0))
+        .attr("width", setTimeGraph(TaskArray[i],0))
         .attr("fill", "#82bfbf");
       }
 
       //ist der Timer groesser als der Fortschritt?
-      if (((dataset.task[i].progress_state-1)/dataset.Columns.length) <= dataset.task[i].percent_average_completition_time) {
-        d3.select('#' + dataset.task[i].id).select(".timer").remove();
-        d3.select('#' + dataset.task[i].id).insert("rect",".progress")
+      if (((TaskArray[i].progress_state-1)/dataset.Columns.length) < TaskArray[i].percent_average_completition_time) {
+        var oldColor = d3.select('#' + TaskArray[i].id).select(".timer").attr("fill");
+          
+        d3.select('#' + TaskArray[i].id).select(".timer").remove();
+        d3.select('#' + TaskArray[i].id).insert("rect",".progress")
           .attr("class", "timer")
           .attr("height", task_height)
-          .attr("width", setTimeGraph(dataset.task[i],0))
-          .attr("fill", "rgb(232,50,50)");
-
-      }
-        
+          .attr("width", setTimeGraph(TaskArray[i],0))
+          .attr("fill", oldColor);
       }
     }
-    }
-  
+  }
+}
 
 
 var positionUpdate = function(t, speed) {
   var a; // Nachfolgertask
   var posX = $('#' + t.id).position().left - tbX;
   var posY = $('#' + t.id).position().top - tbY;
-  
+
   d3.selectAll("#" + t.id)
   .transition()
   .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
   .duration(speed);
-  
   // falls Nachfolgertask vorhanden mit nachruecken    
   if(t.after != null){
-    for (var i = 0; i < dataset.task.length; i++){
-      if (t.after == dataset.task[i].id) { a = dataset.task[i] }
-    }
-    positionUpdate(a, speed+100);
+    followTask = Tasks.findOne({id:t.after});
+    positionUpdate(followTask, speed+100);
   }
 }
 
 // Tasks neu verknuepfen
 // Vorgaenger und Nachfolger des Dragtasks
 var stateUpdate = function(b,a) {
-
   // keinen Nachfolger
   if(a == null){
     // aber Vorgaenger
     if(b != null){
       // id to object
-      for (var i = 0; i < dataset.task.length; i++){
-        if (dataset.task[i].id == b) { b = dataset.task[i]; } 
-      }
-    // Vorgaenger hat keinen Nachfolger mehr  
-    b.after = null;
+        var bID = Tasks.findOne({"id":b})._id;
+        // Vorgaenger hat keinen Nachfolger mehr  
+        Tasks.update(bID, {$set:{after:null}});
     }
   }
   // hat einen Nachfolger
   else {
     // und Vorgaenger
     if (b != null) {
-      // id to object
-      for (var i = 0; i < dataset.task.length; i++){
-        if (dataset.task[i].id == b) { b = dataset.task[i]; }
-        if (dataset.task[i].id == a) { a = dataset.task[i]; }
-      }
-    // verknuepfen des Tasks  
-    a.before = b.id;
-    b.after = a.id;  
+        var beforeID = Tasks.findOne({"id":b})._id;
+        var afterID = Tasks.findOne({"id":a})._id;
+        
+    // verknuepfen des Tasks
+    Tasks.update(beforeID, {$set:{after:a}});
+    Tasks.update(afterID, {$set:{before:b}});
     }
     // Nachfolger aber keinen Vorgaenger  
     else {
-      // id to object
-      for (var i = 0; i < dataset.task.length; i++){
-        if (dataset.task[i].id == a) { a = dataset.task[i]; } 
-      }
-      a.before = null;
+      var aID = Tasks.findOne({"id":a})._id;
+      Tasks.update(beforeID, {$set:{before:null}});
     }
-  // Nachruecken um Luecke zu schliessen 
-  positionUpdate(a, 500);
+  // Nachruecken um Luecke zu schliessen
+  afterTask = Tasks.findOne({id:a});
+  positionUpdate(afterTask, 500);
   } 
 }
 
@@ -154,8 +173,7 @@ var start = function(id) {
 
 // Funktion waehrend des Drags
 var move = function(task){
-  
-  if (!(task.progress_state >= dataset.Columns.length+1)) {
+  if (!(Tasks.findOne({id:task.id}).progress_state >= dataset.Columns.length+1)) {
 
   // Mousepos im Taskboard  
   var mTaskboard = d3.mouse($('#taskboard')[0]);
@@ -170,13 +188,14 @@ var move = function(task){
 }
 
 // Funktion beim Drop
-var stop = function(t) {
- var posX = $('#' + t.id).position().left;
+var stop = function(task) {
+   
+ var posX = $('#' + task.id).position().left;
  var posY = spaceT;
   
   // Task auf alte Position zuruecksetzen 
   if((posX < (oldX+(task_width+spaceR)-task_width/3)) || (posX > oldX+(2*task_width))){
-    d3.select('#' + t.id)
+    d3.select('#' + task.id)
       .transition()
       .attr("transform", "translate(" + (oldX-tbX) + "," + (oldY-tbY) +")")
       .duration(1000)
@@ -186,51 +205,60 @@ var stop = function(t) {
   // Task wird innerhalb der neuen Spalte losgelassen
   else{
     // State hochsetzten
-    t.progress_state = t.progress_state + 1;
-
+    
+    //alert(Tasks.findOne({id:task.id}).before);
+    //alert(Tasks.findOne({id:task.id}).after);
+    
+    var newTaskState = Tasks.findOne({id:task.id}).progress_state+1;
+    var currentTaskID = Tasks.findOne({id:task.id})._id;
+    Tasks.update(currentTaskID, {$set:{progress_state:newTaskState}});
     // letzten Tasks der neuen Spalte finden
-    for (var i = 0; i < dataset.task.length; i++) {
-      if ((t.progress_state == dataset.task[i].progress_state) && (dataset.task[i].after == null) && (t.id != dataset.task[i].id)) {
+    var TaskArray = Tasks.find().fetch();
+    
+    for (var i = 0; i < Tasks.find().count(); i++) { 
+      if ((newTaskState == TaskArray[i].progress_state) && (TaskArray[i].after == null) && (task.id != TaskArray[i].id)) {
         // Position unter den letzten Task
-        posY = $('#' + dataset.task[i].id).position().top + task_height + spaceB - tbY;
-        dataset.task[i].after = t.id;
-        stateUpdate(t.before, t.after);
-        t.before = dataset.task[i].id;
+        posY = $('#' + TaskArray[i].id).position().top + task_height + spaceB - tbY;
+        Tasks.update(TaskArray[i]._id, {$set:{after:task.id}});
+        stateUpdate(Tasks.findOne({id:task.id}).before, Tasks.findOne({id:task.id}).after);
+        Tasks.update(currentTaskID, {$set:{before:TaskArray[i].id}});
       }  
     }
     
-    d3.select('#' + t.id)
+    d3.select('#' + task.id)
       .transition()
       .attr("transform", "translate(" + (oldX+task_width+spaceR - tbX) + "," + posY +")")
       //Porgress Update
-      .select(".progress").attr("width", setProgressGraph(t))
+      .select(".progress").attr("width", setProgressGraph(Tasks.findOne({id:task.id})))
       .duration(600);
-    if (posY == spaceT) {stateUpdate(t.before, t.after); t.before = null;}  
-    t.after = null;
+    if (posY == spaceT) {stateUpdate(Tasks.findOne({id:task.id}).before, Tasks.findOne({id:task.id}).after); Tasks.update(currentTaskID, {$set:{before:null}});}  
+    Tasks.update(currentTaskID, {$set:{after:null}});
     update();
   }
 }
 
 // Berechnung der x und y Position bezueglich des States und des Vorgaengers
-var position = function(state, before){
+var position = function(task){
   var y, x;
-  x = state*(task_width + spaceR);
+  x = Tasks.findOne({id:task.id}).progress_state*(task_width + spaceR);
   
-  if (before == null) { y = spaceT; }
+  if (Tasks.findOne({id:task.id}).before == null) { y = spaceT; }
   else {
-    y = $('#' + before).position().top + task_height + spaceB - tbY;
+    y = $('#' + Tasks.findOne({id:task.id}).before).position().top + task_height + spaceB - tbY;
   } 
   return "translate(" + x + "," + y + ")";
 }
 
-
 var timerTick = function() {
   update();
-  for (var i = 0; i < dataset.task.length; i++) {
-    if ((dataset.task[i].progress_state != 0) && (dataset.task[i].progress_state < (dataset.Columns.length+1))) {
-      if(dataset.task[i].percent_average_completition_time <= 2) {
-        var point = setTimeGraph(dataset.task[i], 0.01);
-        d3.select('#' + dataset.task[i].id).select(".timer").transition().attr("width", point);
+  var TaskArray = Tasks.find().fetch();
+  for (var i = 0; i < Tasks.find().count(); i++) {
+    if ((TaskArray[i].progress_state != 0) && (TaskArray[i].progress_state < (dataset.Columns.length+1))) {
+      if(TaskArray[i].percent_average_completition_time <= 2) {
+        var point = setTimeGraph(TaskArray[i], 0.01);
+        var color = setTimerColor(TaskArray[i]);
+        d3.select('#' + TaskArray[i].id).select(".timer").transition().attr("width", point).attr("fill", color);
+
       }
     }
   }
@@ -251,20 +279,46 @@ var doTheClick = function() {
 }
 
 
+var refresh = function(){
+  //alert(Tasks.find().count());
+  var fetch = Tasks.find().fetch();
+  
+  for (var i=0; i< Tasks.find().count(); i++) {
+   var id = fetch[i]._id;
+   Tasks.remove(id);
+  }
+  
+  if (Tasks.find().count()== 0) { 
+    for (var i = 0; i < dataset.task.length; i++) {
+      Tasks.insert({
+        "id": dataset.task[i].id,
+        "progress_state": dataset.task[i].progress_state,
+        "percent_average_completition_time": dataset.task[i].percent_average_completition_time,
+        "before": dataset.task[i].before,
+        "after": dataset.task[i].after
+      });
+    }
+    renderTask();
+    renderTaskboard();
+  }
+  
+  else refresh();
+}
+
 // rendert alle Tasks
 var renderTask = function() {
-
+  
   // falls wir updaten, alle alten <g> loeschen
   d3.select("#taskboard").selectAll("g").remove();
   
   var taskboard = d3.select("#taskboard").selectAll()
   // Datenanbindung
-  .data(dataset.task).enter()
+  .data(Tasks.find().fetch()).enter()
   
   // SVG-Group
   .append("g")
   .attr("id" , function(d){return d.id})
-  .attr("transform", function(d){return position(d.progress_state, d.before)})    
+  .attr("transform", function(d){return position(d)})    
   // Drag and Drop Event
   .call(d3.behavior.drag()
   .on("dragstart", function(d){start(d.id)})     
@@ -282,8 +336,8 @@ var renderTask = function() {
   taskboard.append("rect")
     .attr("height", task_height)
     .attr("width", function(d){ return setTimeGraph(d,0) })
-    .attr("fill", "#E82E3F")
-    .attr("class", "timer");
+    .attr("class", "timer")
+    .attr("fill", function(d){ return setTimerColor(d)});
     
   // Fortschrittsgraph  
   taskboard.append("rect")
@@ -296,14 +350,15 @@ var renderTask = function() {
     .attr("class", "overtime")
     .attr("points", task_width + ",0 " + task_width + "," + task_height + " " + task_width + "," + task_height)
     .attr("fill", taskBg);
-  
-    
-    
 }
 
 
 //rendert das Taskboard
 var renderTaskboard = function(){
+  
+  d3.select("#taskboard").selectAll("text").remove();
+  d3.select("#taskboard").selectAll("line").remove();
+  
   var dist = 0;
   var taskboard = d3.select("#taskboard")
             
@@ -373,41 +428,64 @@ var renderTaskboard = function(){
 }
 
 
-////// CLIENT
-if (Meteor.isClient) {
-
-  Meteor.startup(function() {
-    $('#timeswitch').click(doTheClick);
-  });
-
-  Template.board.rendered = function() {
-     tbX = $('#taskboard').position().left;
-     tbY = $('#taskboard').position().top;
-     
-     renderTask();
-     renderTaskboard();
-  }
-}
-
-
-
 ////// SERVER
 if (Meteor.isServer) {
+  
   Meteor.startup(function() {
 
     // wenn die Datenbank leer ist, mit Beispielen fuellen
     if (Tasks.find().count() === 0 && Columns.find().count() === 0) {
       // leere Tasks anlegen
-      Tasks.insert({"id":"Login", "percent_completed":0, "percent_average_completition_time":0 , "state": 0, "before":null ,"after":"Nutzersteuerung"});
-      Tasks.insert({"id":"Nutzersteuerung", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Login" ,"after":"Eingabe"});
-      Tasks.insert({"id":"Eingabe", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Nutzersteuerung" ,"after":"Management"});
-      Tasks.insert({"id":"Management", "percent_completed":0, "percent_average_completition_time":0, "state": 0, "before":"Eingabe" ,"after":null});
-
+      for (var i = 0; i < dataset.task.length; i++) {
+      Tasks.insert({
+        "id": dataset.task[i].id,
+        "progress_state": dataset.task[i].progress_state,
+        "percent_average_completition_time": dataset.task[i].percent_average_completition_time,
+        "before": dataset.task[i].before,
+        "after": dataset.task[i].after
+        });
+      }
+      
       // Spalten anlegen
       Columns.insert({"id":"Entwerfen"});
       Columns.insert({"id":"Umsetzen"});
       Columns.insert({"id":"Ausliefern"});
     }
+    
+  });
+  
+  Tasks.allow({
+    insert: function () { return true; },
+    update: function () { return true; },
+    remove: function () { return true; } 
+    });
+  
+  
+  Meteor.publish("tasks", function() {
+        return Tasks.find({});
+    });
+  
+}
 
+////// CLIENT
+if (Meteor.isClient) {
+  Meteor.subscribe("tasks", function(){
+     //Set the reactive session as true to indicate that the data have been loaded
+     Session.set('data_loaded', true);
+      renderTask();
+      renderTaskboard();
+  });
+  
+  Meteor.startup(function() {
+    Session.set('data_loaded', false); 
+    $('#timeswitch').click(doTheClick);
+    $('#back').click(refresh);
+    
+    Template.board.rendered = function() {
+     tbX = $('#taskboard').position().left;
+     tbY = $('#taskboard').position().top;
+    }
+    
   });
 }
+
