@@ -25,8 +25,8 @@ dataset = { "task":[
 
         "Columns":[
             
-            {"id":"Entwerfen"},
-            {"id":"Umsetzen"},
-            {"id":"Ausliefern"},
+            {"id":"Entwerfen", "average_completition_time":2},
+            {"id":"Umsetzen", "average_completition_time":1},
+            {"id":"Ausliefern", "average_completition_time":3}
         ]
 };
