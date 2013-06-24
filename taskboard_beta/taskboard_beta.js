@@ -163,7 +163,7 @@ var stateUpdate = function(b,a) {
     // Nachfolger aber keinen Vorgaenger  
     else {
       var aID = Tasks.findOne({"id":a})._id;
-      Tasks.update(beforeID, {$set:{before:null}});
+      Tasks.update(aID, {$set:{before:null}});
     }
   // Nachruecken um Luecke zu schliessen
   afterTask = Tasks.findOne({id:a});
@@ -176,6 +176,7 @@ var start = function(id) {
   d3.selectAll("g").selectAll("text").remove();
   d3.selectAll("g").selectAll("polygon").remove();
   d3.selectAll("g").selectAll(".detailRect").remove();
+  detailClick = null;
   
   // Mousepos innerhalb eines Tasks  
   mTask = d3.mouse($('#' + id)[0]);
@@ -223,6 +224,11 @@ var stop = function(task) {
     var currentTaskID = Tasks.findOne({id:task.id})._id;
     Tasks.update(currentTaskID, {$set:{progress_state:newTaskState}});
     
+    console.log("start");
+    console.log("before:" + Tasks.findOne({id:task.id}).before);
+    console.log("id:" + Tasks.findOne({id:task.id}).id);
+    console.log("after:" + Tasks.findOne({id:task.id}).after);
+    
     // letzten Tasks der neuen Spalte finden
     var TaskArray = Tasks.find().fetch();
     for (var i = 0; i < TaskArray.length; i++) { 
@@ -247,27 +253,40 @@ var stop = function(task) {
       Tasks.update(currentTaskID, {$set:{before:null}});
     }  
     Tasks.update(currentTaskID, {$set:{after:null}});
+    
+    console.log("ende");
+    console.log("before:" + Tasks.findOne({id:task.id}).before);
+    console.log("id:" + Tasks.findOne({id:task.id}).id);
+    console.log("after:" + Tasks.findOne({id:task.id}).after);
+    
     update();
   }
 }
 
 // Berechnung der x und y Position bezueglich des States und des Vorgaengers
 var position = function(task){
-  var y, x;
-  x = Tasks.findOne({id:task.id}).progress_state*(task_width + spaceR);
+  console.log("atWork");
+  var x = task.progress_state*(task_width + spaceR);
   
-  if (Tasks.findOne({id:task.id}).before == null) { y = spaceT; }
+  if (task.before == null) {
+    var y = spaceT;
+    var taskposition = "translate(" + x + "," + y + ")";
+    d3.select('#'+ task.id).attr("transform", taskposition);
+  }
   else {
-    y = $('#' + Tasks.findOne({id:task.id}).before).position().top + task_height + spaceB - tbY;
-  } 
-  return "translate(" + x + "," + y + ")";
+   var y = $('#' + Tasks.findOne({id:task.id}).before).position().top + task_height + spaceB - tbY;
+   var taskposition = "translate(" + x + "," + y + ")";
+    d3.select('#'+ task.id).attr("transform", taskposition);
+  }
+  
+  if (task.after != null) {
+      position(Tasks.findOne({before:task.id}))
+  }
 }
 
 var setDetailPolygon = function(task,i){
   var polygon = "0,0 0,0 0,0";
   var state = Tasks.findOne({id:task.id}).progress_state;
-  //alert(i);
-  //alert(state);
   if (!(i+1 >= state)) {
     polygon = ((task_width+task_width*(i-1))/dataset.Columns.length + "," + task_height + " " +
                 "30," + task_height + " " + "30,0")
@@ -369,6 +388,7 @@ var refresh = function(){
     
     renderTask();
     renderTaskboard();
+    console.log("-----------------");
   }
   
   else refresh();
@@ -391,7 +411,6 @@ var renderTask = function() {
   // SVG-Group
   .append("g")
   .attr("id" , function(d){return d.id})
-  .attr("transform", function(d){return position(d)})    
   // Drag and Drop Event
   .call(d3.behavior.drag()
   .on("dragstart", function(d){start(d.id)})     
@@ -499,6 +518,12 @@ var renderTaskboard = function(){
        d3.select('#' + Tasks.find().fetch()[i].id)
       .select(".progress").attr("width", setProgressGraph(Tasks.find().fetch()[i]));
   }
+  
+  var headTasks = Tasks.find({before:null}).fetch();
+  for (var i = 0; i < headTasks.length; i++) {
+    console.log(headTasks[i]);
+    position(headTasks[i]);
+  }
     
  update();
 }
@@ -576,6 +601,7 @@ if (Meteor.isClient) {
     $('#timeswitch').click(timerSwitch);
     $('#back').click(refresh);
     $('#newTask').click(setNewTask);
+    detailClick = null;
     
     Template.board.rendered = function() {
      tbX = $('#taskboard').position().left;
