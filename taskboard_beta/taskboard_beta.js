@@ -338,23 +338,31 @@ var detail = function(task){
 
 var processLineUpdate = function (){
   for (var i = 0; i < Columns.find().count(); i++) {
-
-  
-  if(Tasks.findOne({progress_state:(i+1),after:null})){ 
-    if ($('#processLine'+i).position().top != $('#' + Tasks.findOne({progress_state:(i+1),after:null}).id).position().top + task_height + spaceB) {
+    if(Tasks.findOne({progress_state:(i+1),after:null})){ 
+      if ($('#processLine'+i).position().top != $('#' + Tasks.findOne({progress_state:(i+1),after:null}).id).position().top + task_height + spaceB) {
         x = (task_width+spaceR)*(i+1);
         y = $('#' + Tasks.findOne({progress_state:(i+1),after:null}).id).position().top - tbY + task_height + spaceB;
         d3.select('#processLine' + i).transition().attr("transform", "translate(" + x + "," + y + ")");
+      }
+    }  
+    else{
+      x = (task_width+spaceR)*(i+1);
+      y = spaceT;
+      d3.select('#processLine' + i).transition().attr("transform", "translate(" + x + "," + y + ")");
+    }    
+  }
+  
+  if(Tasks.findOne({progress_state:0,after:null})){ 
+    if ($('#newTaskButton').position().top != $('#' + Tasks.findOne({progress_state:0,after:null}).id).position().top + task_height + spaceB) {
+      y = $('#' + Tasks.findOne({progress_state:0,after:null}).id).position().top - tbY + task_height + spaceB;
+      d3.select('#newTaskButton').transition().attr("transform", "translate(0," + y + ")");
     }
   }  
   else{
-        x = (task_width+spaceR)*(i+1);
-        y = spaceT;
-        d3.select('#processLine' + i).transition().attr("transform", "translate(" + x + "," + y + ")");
-  }    
-  }
+    y = spaceT;
+    d3.select('#newTaskButton').transition().attr("transform", "translate(0," + y + ")");
+  }  
 }
-
 
 var timerTick = function() {
   update();
@@ -526,7 +534,7 @@ var renderTaskboard = function(){
   for (var i = 0; i < headTasks.length; i++) {
     position(headTasks[i]);
   }
-  
+    
   taskboard.selectAll("line")
     .attr("stroke-width", 4)
     .attr("stroke", "#000000");
@@ -571,6 +579,32 @@ var renderTaskboard = function(){
     .attr("font-family", "Helvetica")
     .attr("fill", "rgb(150,150,150)");
     
+  d3.select("#taskboard").append("g")
+    .attr("id", "newTaskButton")
+    .attr("transform",
+          function(){
+            if (Tasks.findOne({progress_state:0,after:null})) {
+            y = $('#' + Tasks.findOne({progress_state:0,after:null}).id).position().top - tbY + task_height + spaceB;
+            }
+            else y = spaceT;
+            return "translate(0," + y + ")";})
+    .on("click", function(){ setNewTask() })
+    .append("line")
+      .attr("x1", 0)
+      .attr("y1", 0)
+      .attr("x2", task_width)
+      .attr("y1", 0)
+      .attr("stroke-width", 2)
+      .attr("stroke", "rgb(0,0,0)");
+      
+  d3.select("#newTaskButton")
+    .append("text")
+      .attr("x", 0)
+      .attr("y", 15)
+      .attr("font-size", "15px")
+      .attr("font-family", "Helvetica")
+      .attr("fill", "rgb(0,0,0)")
+      .text("+ neuer Task"); 
     
  update();
 }
