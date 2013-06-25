@@ -2,16 +2,16 @@
 var task_width = 140, task_height = 30;
 var average_time = 0;
 
+// Abstand nach rechts/unter
+var spaceR = 30;
+var spaceB = 10;
+var spaceT = 40;
+
 //welcher Task würde zuletzt angesehen
 var detailClick = null;
 
 // Position der SVG im Browser
 var tbX,tbY;
-
-// Abstand nach rechts/unter
-var spaceR = 30;
-var spaceB = 10;
-var spaceT = 40;
 
 // Hilfsvariablen fuer DandD
 var mTask, oldX, oldY;
@@ -20,8 +20,10 @@ var mTask, oldX, oldY;
 var interval;
 
 //Farben
-var taskBg = "rgb(230,230,230)";
+var taskBg = "rgb(240,240,240)";
 var boardColor = "#000000";
+
+tickFrequenz = 30;
 
 // Datenbank Objekte anlegen
 Tasks = new Meteor.Collection("tasks");
@@ -124,15 +126,17 @@ var positionUpdate = function(t, speed) {
   var a; // Nachfolgertask
   var posX = $('#' + t.id).position().left - tbX;
   var posY = $('#' + t.id).position().top - tbY;
+  
 
   d3.selectAll("#" + t.id)
   .transition()
   .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
   .duration(speed);
-  // falls Nachfolgertask vorhanden mit nachruecken    
+  // falls Nachfolgertask vorhanden mit nachruecken
+  
   if(t.after != null){
     followTask = Tasks.findOne({id:t.after});
-    positionUpdate(followTask, speed+100);
+    positionUpdate(followTask, speed+50);
   }
 }
 
@@ -167,13 +171,13 @@ var stateUpdate = function(b,a) {
     }
   // Nachruecken um Luecke zu schliessen
   afterTask = Tasks.findOne({id:a});
-  positionUpdate(afterTask, 500);
+  positionUpdate(afterTask, 300);
   } 
 }
 
 // am Begin des Drags
 var start = function(id) {
-  d3.selectAll("g").selectAll("text").remove();
+  d3.selectAll("g").selectAll(".detailText").remove();
   d3.selectAll("g").selectAll("polygon").remove();
   d3.selectAll("g").selectAll(".detailRect").remove();
   detailClick = null;
@@ -224,11 +228,7 @@ var stop = function(task) {
     var currentTaskID = Tasks.findOne({id:task.id})._id;
     Tasks.update(currentTaskID, {$set:{progress_state:newTaskState}});
     
-    console.log("start");
-    console.log("before:" + Tasks.findOne({id:task.id}).before);
-    console.log("id:" + Tasks.findOne({id:task.id}).id);
-    console.log("after:" + Tasks.findOne({id:task.id}).after);
-    
+
     // letzten Tasks der neuen Spalte finden
     var TaskArray = Tasks.find().fetch();
     for (var i = 0; i < TaskArray.length; i++) { 
@@ -253,19 +253,14 @@ var stop = function(task) {
       Tasks.update(currentTaskID, {$set:{before:null}});
     }  
     Tasks.update(currentTaskID, {$set:{after:null}});
-    
-    console.log("ende");
-    console.log("before:" + Tasks.findOne({id:task.id}).before);
-    console.log("id:" + Tasks.findOne({id:task.id}).id);
-    console.log("after:" + Tasks.findOne({id:task.id}).after);
-    
+
     update();
+    setTimeout(function(){ processLineUpdate();},500);
   }
 }
 
 // Berechnung der x und y Position bezueglich des States und des Vorgaengers
 var position = function(task){
-  console.log("atWork");
   var x = task.progress_state*(task_width + spaceR);
   
   if (task.before == null) {
@@ -302,7 +297,7 @@ var setDetailPolygon = function(task,i){
 
 var detail = function(task){
   //remove all detail Elements
-  d3.selectAll("g").selectAll("text").remove();
+  d3.selectAll("g").selectAll(".detailText").remove();
   d3.selectAll("g").selectAll("polygon").remove();
   d3.selectAll("g").selectAll(".detailRect").remove();
   
@@ -328,7 +323,8 @@ var detail = function(task){
 
   d3.select('#' + task.id).append("text")
   .text(task.id)
-    .attr("x", "5") 
+    .attr("x", "5")
+    .attr("class", "detailText")
     .attr("font-size", "12px")
     .attr("font-family", "Helvetica")
     .attr("fill", "white")
@@ -340,13 +336,33 @@ var detail = function(task){
     
 }
 
+var processLineUpdate = function (){
+  for (var i = 0; i < Columns.find().count(); i++) {
+
+  
+  if(Tasks.findOne({progress_state:(i+1),after:null})){ 
+    if ($('#processLine'+i).position().top != $('#' + Tasks.findOne({progress_state:(i+1),after:null}).id).position().top + task_height + spaceB) {
+        x = (task_width+spaceR)*(i+1);
+        y = $('#' + Tasks.findOne({progress_state:(i+1),after:null}).id).position().top - tbY + task_height + spaceB;
+        d3.select('#processLine' + i).transition().attr("transform", "translate(" + x + "," + y + ")");
+    }
+  }  
+  else{
+        x = (task_width+spaceR)*(i+1);
+        y = spaceT;
+        d3.select('#processLine' + i).transition().attr("transform", "translate(" + x + "," + y + ")");
+  }    
+  }
+}
+
+
 var timerTick = function() {
   update();
   var TaskArray = Tasks.find().fetch();
   for (var i = 0; i < Tasks.find().count(); i++) {
     if ((TaskArray[i].progress_state != 0) && (TaskArray[i].progress_state < (dataset.Columns.length+1))) {
       if(TaskArray[i].percent_average_completition_time <= 2) {
-        var point = setTimeGraph(TaskArray[i], 1/60);
+        var point = setTimeGraph(TaskArray[i], (1/average_time)/tickFrequenz);
         var color = setTimerColor(TaskArray[i]);
         d3.select('#' + TaskArray[i].id).select(".timer").transition().attr("width", point).attr("fill", color);
 
@@ -384,11 +400,9 @@ var refresh = function(){
         "before": dataset.task[i].before,
         "after": dataset.task[i].after
       });
-    }
-    
+    } 
     renderTask();
     renderTaskboard();
-    console.log("-----------------");
   }
   
   else refresh();
@@ -502,17 +516,6 @@ var renderTaskboard = function(){
       .attr("x2", function(d,i){return getStatePos(i)})
       .attr("y2", task_height); 
   
-    
-  taskboard.selectAll("line")
-    .attr("stroke-width", 3)
-    .attr("stroke", boardColor);
-  taskboard.selectAll("g").selectAll("line")
-    .attr("stroke-width", 1)
-    .attr("stroke", "#c0c0c0");
-  taskboard.selectAll("text")
-    .attr("font-size", "20px")
-    .attr("font-family", "Helvetica")
-    .attr("fill", boardColor);
   
   for (var i = 0; i < Tasks.find().count(); i++) {
        d3.select('#' + Tasks.find().fetch()[i].id)
@@ -521,9 +524,53 @@ var renderTaskboard = function(){
   
   var headTasks = Tasks.find({before:null}).fetch();
   for (var i = 0; i < headTasks.length; i++) {
-    console.log(headTasks[i]);
     position(headTasks[i]);
   }
+  
+  taskboard.selectAll("line")
+    .attr("stroke-width", 4)
+    .attr("stroke", "#000000");
+  taskboard.selectAll("g").selectAll("line")
+    .attr("stroke-width", 1)
+    .attr("stroke", "#c0c0c0");
+  taskboard.selectAll("text")
+    .attr("font-size", "20px")
+    .attr("font-family", "Helvetica")
+    .attr("fill", "#000000");
+    
+ var processLines = taskboard.selectAll()
+    .data(dataset.Columns)
+    .enter()
+    .append("g")
+      .attr("id" , function(d,i){ return "processLine" +i})
+      .attr("transform",
+            function(d,i){
+              x = (task_width+spaceR)*(i+1);
+              if (Tasks.findOne({progress_state:(i+1),after:null})) {
+                y = $('#' + Tasks.findOne({progress_state:(i+1),after:null}).id).position().top - tbY + task_height + spaceB;
+          
+              }
+              else {
+                y = spaceT;
+              }
+              return "translate(" + x + "," + y +")" });
+   
+  processLines.append("line")
+    .attr("x1", 0)
+    .attr("y1", 0)
+    .attr("x2", task_width)
+    .attr("y2", 0)
+    .attr("stroke-width", 2)
+    .attr("stroke", "rgb(150,150,150)");
+  
+  processLines.append("text")
+    .attr("x", 0)
+    .attr("y", 20)
+    .text(function(d){return d.average_completition_time + " min"})
+    .attr("font-size", "15px")
+    .attr("font-family", "Helvetica")
+    .attr("fill", "rgb(150,150,150)");
+    
     
  update();
 }
@@ -606,6 +653,9 @@ if (Meteor.isClient) {
     Template.board.rendered = function() {
      tbX = $('#taskboard').position().left;
      tbY = $('#taskboard').position().top;
+     
+     task_height = $(document).height()/15;
+     task_width = $(document).width()/7;
     }
     
   });
