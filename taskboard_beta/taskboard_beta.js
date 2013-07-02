@@ -29,16 +29,16 @@ tickFrequenz = 30;
 Tasks = new Meteor.Collection("tasks");
 Columns = new Meteor.Collection("columns");
 
-var getStatePos = function(i){
+var getStatePos = function(i, direction){
   if (i == 0) {
-    return task_width*(Columns.find().fetch()[i].average_completition_time/average_time);
+    return direction*(Columns.find().fetch()[i].average_completition_time/average_time);
   }
   else{
     var dist = 0;
     for (var j = 0; j<i; j++) {
-      dist += task_width*(Columns.find().fetch()[j].average_completition_time/average_time);
+      dist += direction*(Columns.find().fetch()[j].average_completition_time/average_time);
     }
-    return dist+task_width*(Columns.find().fetch()[i].average_completition_time/average_time);
+    return dist+direction*(Columns.find().fetch()[i].average_completition_time/average_time);
   }
 }
 
@@ -48,18 +48,18 @@ var setTimeGraph = function(task,time) {
   var currentID = Tasks.findOne({id:task.id})._id;
   var newTime = Tasks.findOne({id:task.id}).percent_average_completition_time + time;
   Tasks.update(currentID, {$set:{percent_average_completition_time: newTime}});
-  
-    if (Tasks.findOne({id:task.id}).percent_average_completition_time <= 1) {
-      return task_width*(Tasks.findOne({id:task.id}).percent_average_completition_time);
-    }
-    else {
+
+  if (Tasks.findOne({id:task.id}).percent_average_completition_time <= 1) {
+    return task_width*(Tasks.findOne({id:task.id}).percent_average_completition_time);
+  }
+  else {
       return task_width;
   }
 }
 
 var setProgressGraph = function(task) {
   if (task.progress_state-1 > 0) {
-    var pos = getStatePos((task.progress_state-2));
+    var pos = getStatePos((task.progress_state-2), task_width);
     return pos;
   }
   else return 0;
@@ -69,7 +69,7 @@ var setTimerColor = function(task){
   var color = "rgb(200,200,200)";
   if ((d3.select('#' + task.id).select(".progress").attr("width")/task_width) < Tasks.findOne({id:task.id}).percent_average_completition_time)  {
     if ((task.progress_state > 0) && (task.progress_state < (Columns.find().count()+1))) {
-      if (Tasks.findOne({id:task.id}).percent_average_completition_time > getStatePos(task.progress_state-1)/task_width) {
+      if (Tasks.findOne({id:task.id}).percent_average_completition_time > getStatePos(task.progress_state-1, task_width)/task_width) {
         return "rgb(231,60,60)";
       }
     
@@ -91,7 +91,7 @@ var update = function() {
   for (var i = 0; i < Tasks.find().count(); i++) {
     //fuer alle Tasks die nicht im Backlog sind
     if (TaskArray[i].progress_state > 1) {
-      var progress = getStatePos(TaskArray[i].progress_state-2);
+      var progress = getStatePos(TaskArray[i].progress_state-2, task_width);
       
       //ist der Fortschritt groesser als der Timer?
       if ((progress/task_width) >= TaskArray[i].percent_average_completition_time) {
@@ -120,6 +120,7 @@ var update = function() {
        d3.select('#' + TaskArray[i].id).select(".timer").attr("fill", setTimerColor(TaskArray[i]));
     }
   }
+  
 }
 
 var positionUpdate = function(t, speed) {
@@ -177,9 +178,10 @@ var stateUpdate = function(b,a) {
 
 // am Begin des Drags
 var start = function(id) {
-  d3.selectAll("g").selectAll(".detailText").remove();
+  d3.selectAll(".detailText").remove();
   d3.selectAll("g").selectAll("polygon").remove();
-  d3.selectAll("g").selectAll(".detailRect").remove();
+  d3.selectAll(".detailRect").remove();
+  d3.selectAll("g").selectAll(".detailLine").remove();
   detailClick = null;
   
   // Mousepos innerhalb eines Tasks  
@@ -192,7 +194,7 @@ var start = function(id) {
 
 // Funktion waehrend des Drags
 var move = function(task){
-  if (!(Tasks.findOne({id:task.id}).progress_state >= dataset.Columns.length+1)) {
+  if (!(Tasks.findOne({id:task.id}).progress_state >= Columns.find().count()+1)) {
 
   // Mousepos im Taskboard  
   var mTaskboard = d3.mouse($('#taskboard')[0]);
@@ -213,7 +215,7 @@ var stop = function(task) {
  var posY = spaceT;
   
   // Task auf alte Position zuruecksetzen 
-  if((posX < (oldX+(task_width+spaceR)-task_width/3)) || (posX > oldX+(2*task_width+task_width/2))){
+  if((posX < (oldX+(task_width+spaceR)-task_width)) || (posX > oldX+(2*task_width+task_width/2))){
     d3.select('#' + task.id)
       .transition()
       .attr("transform", "translate(" + (oldX-tbX) + "," + (oldY-tbY) +")")
@@ -227,6 +229,15 @@ var stop = function(task) {
     var newTaskState = Tasks.findOne({id:task.id}).progress_state+1;
     var currentTaskID = Tasks.findOne({id:task.id})._id;
     Tasks.update(currentTaskID, {$set:{progress_state:newTaskState}});
+    
+    
+    if (newTaskState > 1) {
+      statePos = getStatePos(newTaskState-2, task_width);
+      newHistory = (statePos - Tasks.findOne({id:task.id}).percent_average_completition_time*task_width)/statePos;
+      var setModifier = { $set: {} };
+      setModifier.$set["state_history" + (newTaskState-2)] = newHistory;
+      Tasks.update(currentTaskID, setModifier);
+    }
     
 
     // letzten Tasks der neuen Spalte finden
@@ -280,56 +291,146 @@ var position = function(task){
 }
 
 var setDetailPolygon = function(task,i){
-  var polygon = "0,0 0,0 0,0";
   var state = Tasks.findOne({id:task.id}).progress_state;
-  if (!(i+1 >= state)) {
-    polygon = ((task_width+task_width*(i-1))/dataset.Columns.length + "," + task_height + " " +
-                "30," + task_height + " " + "30,0")
-    /*
-     *+ "," + task_height + " " +
-              (task_width+task_width*(i))/dataset.Columns.length + "," + task_height + " " +
-              (task_width+task_width*(i))/dataset.Columns.length + "," + task_height-10;*/
+  if (!(i+1 >= state) || (Tasks.findOne({id:task.id}).percent_average_completition_time > getStatePos(state-1, task_width)/task_width)) {
+    if (!(i >= state)){
+    if (i == 0) {
+      x1 = 0;
+      y1 = 0;
+    }
+    else{
+    x1 = getStatePos(i-1, task_width);
+    y1 = getStatePos(i-1, task_height);
+    }
+    
+    x2 = getStatePos(i, task_width);
+    y2 = getStatePos(i, task_height);
+    
+    x3 = x2;
+    y3 = task_height;
+    
+    x4 = x1;
+    y4 = y3;
+    
+    return x1 + "," + y1 + " " + x2 + "," + y2 + " " + x3 + "," + y3 + " " + x4 + "," + y4;
+    }
   }
-  
-  
-  return polygon;
+  else return "0,0 0,0 0,0 0,0";
 }
+
+var setDetailHistoryPolygon = function(task){
+  var state = Tasks.findOne({id:task.id}).progress_state;
+  var polyString = "0,0 ";
+    
+    if (state == 0) {
+      return  polyString;
+    }
+    
+    if (state == 1) {
+      statePosW = getStatePos(state-1, task_width);
+      statePosH = getStatePos(state-1, task_height);
+      if (Tasks.findOne({id:task.id}).percent_average_completition_time > statePosW/task_width) {
+      y = statePosH + (Tasks.findOne({id:task.id}).state_history0 *statePosH);
+      if (y < 0) {
+        y = 0;
+      }
+       x = statePosW;
+       return polyString = polyString + x + "," + y + " " + x + "," + task_height + " 0," + task_height;
+      }
+    }
+    
+    if (state > 1) {
+      for (var i = 0; i < Columns.find().count(); i++) {
+        if (i <= state-2 ) {
+          y = getStatePos(i, task_height) + (Tasks.findOne({id:task.id})['state_history' + i] *getStatePos(i, task_height));
+          x = getStatePos(i, task_width);
+          if (y < 0) y = 0;
+          //if (y > task_height) y = task_height;
+          polyString = polyString + x + "," + y + " ";
+          }
+        }
+      if (state <= Columns.find().count()) {
+        console.log(state);
+        //console.log(Columns.find().count());
+        if (Tasks.findOne({id:task.id}).percent_average_completition_time > getStatePos(state-1, task_width)/task_width) {
+            y = getStatePos(state-1, task_height) + (Tasks.findOne({id:task.id})['state_history' + (state-1)] *getStatePos(state-1, task_height));
+            x = getStatePos(state-1, task_width);
+            if (y < 0) y = 0;
+            //if (y > task_height) y = task_height;
+            polyString =  polyString + x + "," + y + " ";
+        }
+      }
+      polyString = polyString + x + "," + task_height + " 0," + task_height;
+    }  
+    return polyString;
+  }
 
 var detail = function(task){
   //remove all detail Elements
   d3.selectAll("g").selectAll(".detailText").remove();
   d3.selectAll("g").selectAll("polygon").remove();
-  d3.selectAll("g").selectAll(".detailRect").remove();
-  
-  
+  d3.selectAll(".detailRect").remove();
+  d3.selectAll("g").selectAll(".detailLine").remove();
+   
   if (!(task.id == detailClick)) {
-  d3.select('#' + task.id).insert("rect", "line")
-    .attr("fill", "rgba(20,20,20,0.5)")
+  d3.select('#' + task.id).append("rect")
+    .attr("fill", "rgba(230,230,230,0.9)")
     .attr("class", "detailRect")
     .attr("width", task_width)
     .transition()
     .attr("height", task_height);
     
-
+  if (Tasks.findOne({id:task.id}).progress_state > 0) {
+    d3.select('#' + task.id)
+    .append("polygon")
+    .attr("fill", "rgb(231,60,60)")
+    .attr("points", "0,0 0,0 0,0 0,0 0,0 0,0")
+    .transition()
+    .attr("points",function() { return setDetailHistoryPolygon(task)});
+    
     d3.select('#' + task.id).selectAll()
     .data(dataset.Columns)
     .enter()
     .append("polygon")
-    .attr("fill", "white")
-    .attr("points", "0,0 0,0 0,0")
+    .attr("fill", "rgba(22,160,133, 0.8)")
+    .attr("points", "0,0 0,0 0,0 0,0")
     .transition()
     .attr("points",function(d,i){return setDetailPolygon(task,i)});
+    }
     
-
-  d3.select('#' + task.id).append("text")
-  .text(task.id)
-    .attr("x", "5")
-    .attr("class", "detailText")
-    .attr("font-size", "12px")
-    .attr("font-family", "Helvetica")
-    .attr("fill", "white")
+    d3.select('#' + task.id).selectAll()
+    .data(dataset.Columns)
+    .enter()
+    .append("line")
+      .attr("class", "detailLine")
+      .attr("y1", function(d,i){return getStatePos(i, task_height)})
+      .attr("x1", 0)
+      .attr("y2", function(d,i){return getStatePos(i, task_height)})
+      .attr("x2", task_width)
+      .attr("stroke-width", 1)
+      .attr("stroke", "rgb(200,200,200)");
+    
+  d3.select("#taskboard").append("rect")
+    .attr("fill", "rgba(0,0,0,0.8)")
+    .attr("class", "detailRect")
+    .attr("width", task_width)
+    .attr("x", $('#' + task.id).position().left - tbX)
+    .attr("y", $('#' + task.id).position().top - tbY + task_height +2)
     .transition()
-    .attr("y", "15");
+    .attr("height", 30);
+  
+  
+  d3.select('#taskboard').append("text")
+  .text(task.id)
+    .attr("x", $('#' + task.id).position().left - tbX + 5)
+    .attr("class", "detailText")
+    .attr("font-size", "14px")
+    .attr("font-family", "Helvetica")
+    .attr("fill", "rgba(255,255,255,0)")
+    .attr("y", $('#' + task.id).position().top - tbY)
+    .transition()
+    .attr("fill", "rgba(255,255,255,1)")
+    .attr("y", $('#' + task.id).position().top - tbY + task_height + 19);
     
   detailClick = task.id; 
   }
@@ -368,12 +469,18 @@ var timerTick = function() {
   update();
   var TaskArray = Tasks.find().fetch();
   for (var i = 0; i < Tasks.find().count(); i++) {
-    if ((TaskArray[i].progress_state != 0) && (TaskArray[i].progress_state < (dataset.Columns.length+1))) {
+    if ((TaskArray[i].progress_state != 0) && (TaskArray[i].progress_state < (Columns.find().count()+1))) {
       if(TaskArray[i].percent_average_completition_time <= 2) {
         var point = setTimeGraph(TaskArray[i], (1/average_time)/tickFrequenz);
         var color = setTimerColor(TaskArray[i]);
         d3.select('#' + TaskArray[i].id).select(".timer").transition().attr("width", point).attr("fill", color);
-
+      }
+      if (Tasks.findOne({id:TaskArray[i].id}).percent_average_completition_time > getStatePos(TaskArray[i].progress_state-1, task_width)/task_width) {
+        statePos = getStatePos(TaskArray[i].progress_state-1, task_width);
+        newHistory = (statePos - Tasks.findOne({id:TaskArray[i].id}).percent_average_completition_time*task_width)/statePos;
+        var setModifier = { $set: {} };
+        setModifier.$set["state_history" + (TaskArray[i].progress_state-1)] = newHistory;
+        Tasks.update(TaskArray[i]._id, setModifier);
       }
     }
   }
@@ -398,7 +505,6 @@ var refresh = function(){
    Tasks.remove(id);
   }
   
-  
   if (Tasks.find().count() == 0) { 
     for (var i = 0; i < dataset.task.length; i++) {
       Tasks.insert({
@@ -406,7 +512,10 @@ var refresh = function(){
         "progress_state": dataset.task[i].progress_state,
         "percent_average_completition_time": dataset.task[i].percent_average_completition_time,
         "before": dataset.task[i].before,
-        "after": dataset.task[i].after
+        "after": dataset.task[i].after,
+        "state_history0": dataset.task[i].state_history0,
+        "state_history1": dataset.task[i].state_history1,
+        "state_history2": dataset.task[i].state_history2
       });
     } 
     renderTask();
@@ -516,12 +625,12 @@ var renderTaskboard = function(){
     .attr("y2", spaceT-15);
    
   taskboard.selectAll("g").selectAll("line")
-    .data(dataset.Columns)
+    .data(Columns.find().fetch())
     .enter()
     .append("line")
-      .attr("x1", function(d,i){return getStatePos(i)})
+      .attr("x1", function(d,i){return getStatePos(i, task_width)})
       .attr("y1", 0)
-      .attr("x2", function(d,i){return getStatePos(i)})
+      .attr("x2", function(d,i){return getStatePos(i, task_width)})
       .attr("y2", task_height); 
   
   
@@ -547,7 +656,7 @@ var renderTaskboard = function(){
     .attr("fill", "#000000");
     
  var processLines = taskboard.selectAll()
-    .data(dataset.Columns)
+    .data(Columns.find().fetch())
     .enter()
     .append("g")
       .attr("id" , function(d,i){ return "processLine" +i})
@@ -623,7 +732,10 @@ if (Meteor.isServer) {
         "progress_state": dataset.task[i].progress_state,
         "percent_average_completition_time": dataset.task[i].percent_average_completition_time,
         "before": dataset.task[i].before,
-        "after": dataset.task[i].after
+        "after": dataset.task[i].after,
+        "state_history0": dataset.task[i].state_history0,
+        "state_history1": dataset.task[i].state_history1,
+        "state_history2": dataset.task[i].state_history2
         });
       }
       for (var i = 0; i < dataset.Columns.length; i++) {
@@ -688,7 +800,7 @@ if (Meteor.isClient) {
      tbX = $('#taskboard').position().left;
      tbY = $('#taskboard').position().top;
      
-     task_height = $(document).height()/15;
+     task_height = $(document).height()/10;
      task_width = $(document).width()/7;
     }
     
