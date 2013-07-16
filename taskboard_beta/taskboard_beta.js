@@ -1,35 +1,43 @@
 // globale Var
-var task_width = 140, task_height = 30;
+
+//breite und höhe eines jeden Taks
+var task_width = 140,task_height = 30;
+
+//durchschnittliche Zeit die ein Task benoetigt um alle Prozesse zu durchqueren
 var average_time = 0;
 
-// Abstand nach rechts/unter
+//Abstand zwischen den Tasks + Abstand zwischen den Interfaceelementen
 var spaceR = 30;
 var spaceB = 10;
 var spaceT = 40;
 
-//welcher Task würde zuletzt angesehen
+//speichert den Namen des Tasks der als letztes in der Deatailansicht war
 var detailClick = null;
 
 // Position der SVG im Browser
 var tbX,tbY;
 
-// Hilfsvariablen fuer DandD
+//Hilfsvariablen fue Drag and Drop
 var mTask, oldX, oldY;
 
 // Timervariablen
 var interval;
 
-//Farben
-var taskBg = "rgb(240,240,240)";
-var boardColor = "#000000";
-
+//definiert wie lange eine Minute ist
+//angaben in Sekunden
 tickFrequenz = 30;
 
-// Datenbank Objekte anlegen
+//legt die Collections fuer Taks und Spalten an
 Tasks = new Meteor.Collection("tasks");
 Columns = new Meteor.Collection("columns");
 
-var getStatePos = function(i, direction){
+
+/*
+ * gibt die relative Position eines Porzessesbalkens innerhalb eines Tasks zurueck
+ * i:= nummer des Prozesses
+ * direction:= task_height / task_weidth
+ */
+var getStatePos = function(i, direction){ 
   if (i == 0) {
     return direction*(Columns.find().fetch()[i].average_completition_time/average_time);
   }
@@ -42,13 +50,21 @@ var getStatePos = function(i, direction){
   }
 }
 
-//verlaengert den Timergraphen um "time"
+/*
+ * erhoeht die Zeit (Verweilzeit), die ein Task schon im System ist und updated diese in der Datenbank
+ * time := Wert um den die verweilzeit erhoeht wird
+ * retun die Position des Zeitgraphen in einen Task basieren auf der Verweilzeit
+ */
 var setTimeGraph = function(task,time) {
   
+  //ID innerhalb der Datenbank
   var currentID = Tasks.findOne({id:task.id})._id;
+  //erhöht die momentane Verweilzeit um "time"
   var newTime = Tasks.findOne({id:task.id}).percent_average_completition_time + time;
+  //Speicherung der neuen Verweilzeit in der Datenbank
   Tasks.update(currentID, {$set:{percent_average_completition_time: newTime}});
 
+  //ueberprueft ob die Verweilzeit unter der durchschnittlichen DLZ liegt
   if (Tasks.findOne({id:task.id}).percent_average_completition_time <= 1) {
     return task_width*(Tasks.findOne({id:task.id}).percent_average_completition_time);
   }
@@ -57,6 +73,10 @@ var setTimeGraph = function(task,time) {
   }
 }
 
+/*
+ * gibt die Position des Fortschrittsgraphen innerhalb des Tasks zurueck
+ * falls dieser sich nicht im Backlog befindet
+ */
 var setProgressGraph = function(task) {
   if (task.progress_state-1 > 0) {
     var pos = getStatePos((task.progress_state-2), task_width);
@@ -65,6 +85,11 @@ var setProgressGraph = function(task) {
   else return 0;
 }
 
+/*
+ * gibt die Farbe des Zeitgraphen eines Tasks zurueck
+ * vertauscht die Layerordnung von Zeit- bzw. Fortschrittsgraphen falls
+ * die Verweilzeit ueber oder unter der durchschnittlichen DLZ liegt eines Prozesses liegt
+ */
 var setTimerColor = function(task){
   var color = "rgb(200,200,200)";
   if ((d3.select('#' + task.id).select(".progress").attr("width")/task_width) < Tasks.findOne({id:task.id}).percent_average_completition_time)  {
@@ -85,6 +110,9 @@ var setTimerColor = function(task){
   }
 }
 
+/*
+ *updatefunktion
+ */
 var update = function() {
   var TaskArray = Tasks.find().fetch();
   
@@ -123,26 +151,37 @@ var update = function() {
   
 }
 
+/*
+ * koregiert die Position eines konkreten Tasks
+ * positioniert den Task direkt hinter seinen Vorgaenger
+ */
 var positionUpdate = function(t, speed) {
-  var a; // Nachfolgertask
+  
+  //momentane Position auf der SVG
   var posX = $('#' + t.id).position().left - tbX;
   var posY = $('#' + t.id).position().top - tbY;
   
-
   d3.selectAll("#" + t.id)
   .transition()
   .attr("transform", "translate(" + posX + "," + (posY-task_height-spaceB) + ")")
   .duration(speed);
-  // falls Nachfolgertask vorhanden mit nachruecken
   
+
+  //rekursive Schleife falls der Task einen Nachflger hat
   if(t.after != null){
     followTask = Tasks.findOne({id:t.after});
     positionUpdate(followTask, speed+50);
   }
 }
 
-// Tasks neu verknuepfen
-// Vorgaenger und Nachfolger des Dragtasks
+/*
+ * verknuepft den Vorgaenger und den Nachfolger in der Datenbank miteinander
+ * b:= Vorgaenger-Task
+ * a:= Nachfolger-Task
+ * 
+ * nach Verknuepfung fueht positionsUpdate(task, nachrueckgeschwindigkeit) aus
+ * 
+ */
 var stateUpdate = function(b,a) {
   // keinen Nachfolger
   if(a == null){
@@ -176,7 +215,10 @@ var stateUpdate = function(b,a) {
   } 
 }
 
-// am Begin des Drags
+/*
+ * definiert die noetigen Variablen fue Drag and Drop
+ * loescht alle Detail-Layer
+ */
 var start = function(id) {
   d3.selectAll(".detailText").remove();
   d3.selectAll("g").selectAll("polygon").remove();
@@ -192,7 +234,10 @@ var start = function(id) {
   oldY = $('#' + id).position().top;
 }
 
-// Funktion waehrend des Drags
+/*
+ * bewegt den Task mit den Zeiger über die Zeichenflaeche
+ * falls nicht im DONE
+ */
 var move = function(task){
   if (!(Tasks.findOne({id:task.id}).progress_state >= Columns.find().count()+1)) {
 
@@ -270,7 +315,10 @@ var stop = function(task) {
   }
 }
 
-// Berechnung der x und y Position bezueglich des States und des Vorgaengers
+/*
+ * Berechnung der x und y Position bezueglich des States und des Vorgaengers
+ * rekursive Schleife falls Nachfolger vorhanden
+ */
 var position = function(task){
   var x = task.progress_state*(task_width + spaceR);
   
@@ -340,13 +388,25 @@ var setDetailHistoryPolygon = function(task){
     }
     
     if (state > 1) {
+      var xB = 0;
+      var yB = 0;
       for (var i = 0; i < Columns.find().count(); i++) {
         if (i <= state-2 ) {
           y = getStatePos(i, task_height) + (Tasks.findOne({id:task.id})['state_history' + i] *getStatePos(i, task_height));
           x = getStatePos(i, task_width);
           if (y < 0) y = 0;
-          //if (y > task_height) y = task_height;
+          if (y > task_height){
+            factor = (y-task_height)/((task_height-yB)+ y- task_height);
+            console.log(y-task_height);
+            console.log(y-task_height);
+            w = (x-xB)*factor;
+            w = x- w;
+            console.log(w);
+            return  polyString = polyString + w + "," + task_height + " 0," + task_height;
+          }
           polyString = polyString + x + "," + y + " ";
+          xB = x;
+          yB = y;
           }
         }
       if (state <= Columns.find().count()) {
@@ -356,7 +416,6 @@ var setDetailHistoryPolygon = function(task){
             y = getStatePos(state-1, task_height) + (Tasks.findOne({id:task.id})['state_history' + (state-1)] *getStatePos(state-1, task_height));
             x = getStatePos(state-1, task_width);
             if (y < 0) y = 0;
-            //if (y > task_height) y = task_height;
             polyString =  polyString + x + "," + y + " ";
         }
       }
@@ -365,22 +424,34 @@ var setDetailHistoryPolygon = function(task){
     return polyString;
   }
 
-var detail = function(task){
-  //remove all detail Elements
-  d3.selectAll("g").selectAll(".detailText").remove();
-  d3.selectAll("g").selectAll("polygon").remove();
-  d3.selectAll(".detailRect").remove();
-  d3.selectAll("g").selectAll(".detailLine").remove();
-   
-  if (!(task.id == detailClick)) {
+/*
+ * zeichnet Detail-Layer und Label
+ * bool == false -> zu begin werden alle Detail-Layer geloescht
+ *                  Detail-Laber werden gezeichnet
+ *                  detailClick -> Namen des ausgewaehlten Tasks
+ */
+var detail = function(task , bool){
+  
+  //loeschen aller Detail-Layer
+  if (!bool) {
+    d3.selectAll("g").selectAll(".detailText").remove();
+    d3.selectAll("g").selectAll("polygon").remove();
+    d3.selectAll(".detailRect").remove();
+    d3.selectAll("g").selectAll(".detailLine").remove(); 
+  }
+  
+  //zeichnen des Detail-Baclgrounds
+  if (!(task.id == detailClick) || (bool)) {
   d3.select('#' + task.id).append("rect")
-    .attr("fill", "rgba(230,230,230,0.9)")
+    .attr("fill", "rgba(240,240,240,0.9)")
     .attr("class", "detailRect")
     .attr("width", task_width)
     .transition()
     .attr("height", task_height);
-    
+  
+  //zeichnen des Verlaufs  
   if (Tasks.findOne({id:task.id}).progress_state > 0) {
+    //gespeicherter Verlauf
     d3.select('#' + task.id)
     .append("polygon")
     .attr("fill", "rgb(231,60,60)")
@@ -388,16 +459,18 @@ var detail = function(task){
     .transition()
     .attr("points",function() { return setDetailHistoryPolygon(task)});
     
+    //idaeler Verlauf
     d3.select('#' + task.id).selectAll()
     .data(dataset.Columns)
     .enter()
     .append("polygon")
-    .attr("fill", "rgba(22,160,133, 0.8)")
+    .attr("fill", "rgba(24,195,195, 0.5)")
     .attr("points", "0,0 0,0 0,0 0,0")
     .transition()
     .attr("points",function(d,i){return setDetailPolygon(task,i)});
     }
     
+    //zeichnen der Prozesslinien
     d3.select('#' + task.id).selectAll()
     .data(dataset.Columns)
     .enter()
@@ -408,35 +481,52 @@ var detail = function(task){
       .attr("y2", function(d,i){return getStatePos(i, task_height)})
       .attr("x2", task_width)
       .attr("stroke-width", 1)
-      .attr("stroke", "rgb(200,200,200)");
-    
-  d3.select("#taskboard").append("rect")
-    .attr("fill", "rgba(0,0,0,0.8)")
-    .attr("class", "detailRect")
-    .attr("width", task_width)
-    .attr("x", $('#' + task.id).position().left - tbX)
-    .attr("y", $('#' + task.id).position().top - tbY + task_height +2)
-    .transition()
-    .attr("height", 30);
+      .attr("stroke", "rgba(180,180,180, 0.5)");
   
+  //zeichnes des Detail-Label
+  if(!(bool)){  
+    d3.select("#taskboard").append("rect")
+      .attr("fill", "rgba(0,0,0,0.8)")
+      .attr("class", "detailRect")
+      .attr("width", task_width)
+      .attr("x", $('#' + task.id).position().left - tbX)
+      .attr("y", $('#' + task.id).position().top - tbY + task_height +2)
+      .transition()
+      .attr("height", 30);
   
-  d3.select('#taskboard').append("text")
-  .text(task.id)
-    .attr("x", $('#' + task.id).position().left - tbX + 5)
-    .attr("class", "detailText")
-    .attr("font-size", "14px")
-    .attr("font-family", "Helvetica")
-    .attr("fill", "rgba(255,255,255,0)")
-    .attr("y", $('#' + task.id).position().top - tbY)
-    .transition()
-    .attr("fill", "rgba(255,255,255,1)")
-    .attr("y", $('#' + task.id).position().top - tbY + task_height + 19);
-    
-  detailClick = task.id; 
+    d3.select('#taskboard').append("text")
+    .text(task.id)
+      .attr("x", $('#' + task.id).position().left - tbX + 5)
+      .attr("class", "detailText")
+      .attr("font-size", "14px")
+      .attr("font-family", "Helvetica")
+      .attr("fill", "rgba(255,255,255,0)")
+      .attr("y", $('#' + task.id).position().top - tbY)
+      .transition()
+      .attr("fill", "rgba(255,255,255,1)")
+      .attr("y", $('#' + task.id).position().top - tbY + task_height + 19);
+     
+    //detailClick -> Namen des ausgewaehlten Tasks
+    detailClick = task.id;
+    } 
   }
-    
 }
 
+/*
+ *zeichnet Detailansicht fue alle Tasks
+ */
+var viewAllDetail = function(){
+  var TaskArray = Tasks.find().fetch();
+  
+  for (var i = 0; i < TaskArray.length; i++) {
+    detail(TaskArray[i], true);
+  }
+  
+}
+
+/*
+ *positioniert Info-Linien am Ende jeder Prozessspalte unter dem letzten Task
+ */
 var processLineUpdate = function (){
   for (var i = 0; i < Columns.find().count(); i++) {
     if(Tasks.findOne({progress_state:(i+1),after:null})){ 
@@ -547,13 +637,13 @@ var renderTask = function() {
   .on("dragstart", function(d){start(d.id)})     
   .on("drag", function(d){move(d)})
   .on("dragend", function(d){stop(d)}))
-  .on("click", function(d){ detail(d)});
+  .on("click", function(d){ detail(d, false)});
   
   // Rechteck  
   taskboard.append("rect")
     .attr("height", task_height)
     .attr("width", task_width)
-    .attr("fill", taskBg);
+    .attr("fill", "rgb(240,240,240)");
     
     
   // Zeitgraph
@@ -793,7 +883,7 @@ if (Meteor.isClient) {
     Session.set('data_loaded', false); 
     $('#timeswitch').click(timerSwitch);
     $('#back').click(refresh);
-    $('#newTask').click(setNewTask);
+    $('#detailView').click(viewAllDetail);
     detailClick = null;
     
     Template.board.rendered = function() {
