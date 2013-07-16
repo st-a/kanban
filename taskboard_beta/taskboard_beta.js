@@ -20,7 +20,7 @@ var tbX,tbY;
 //Hilfsvariablen fue Drag and Drop
 var mTask, oldX, oldY;
 
-// Timervariablen
+// Timerinterval-Variablen
 var interval;
 
 //definiert wie lange eine Minute ist
@@ -111,7 +111,13 @@ var setTimerColor = function(task){
 }
 
 /*
- *updatefunktion
+ * updatefunktion
+ *
+ * wird ausgefueht bei jeden Timertick oder Dropevent
+ * vergleicht Verweilzeit und Fortschritt
+ *
+ * setTimerGraph(task)
+ * setTimerColor(task)
  */
 var update = function() {
   var TaskArray = Tasks.find().fetch();
@@ -253,12 +259,23 @@ var move = function(task){
   }
 }
 
-// Funktion beim Drop
+/*
+ * funktion beim Drop des Tasks
+ *
+ * stateUpdate()
+ * setProgressGraph()
+ * processLineUpdate()
+ * update()
+ */
 var stop = function(task) {
-   
+ 
+  //x-Position beim Drop
  var posX = $('#' + task.id).position().left;
+ //Standart y-Position
+ //direkt unter den Headlines
  var posY = spaceT;
   
+  //Falls der Task sich nicht im Zielintervall befindet
   // Task auf alte Position zuruecksetzen 
   if((posX < (oldX+(task_width+spaceR)-task_width)) || (posX > oldX+(2*task_width+task_width/2))){
     d3.select('#' + task.id)
@@ -268,14 +285,16 @@ var stop = function(task) {
       .ease("elastic");
   }
   
-  // Task wird innerhalb der neuen Spalte losgelassen
+  // Task wird innerhalb des Intervalls gedroped
   else{
     // State hochsetzten  
     var newTaskState = Tasks.findOne({id:task.id}).progress_state+1;
     var currentTaskID = Tasks.findOne({id:task.id})._id;
+    //in der Collection speichern
     Tasks.update(currentTaskID, {$set:{progress_state:newTaskState}});
     
-    
+    //falls neuer Prozessstate > 1
+    //neuen Verlauf anlegen
     if (newTaskState > 1) {
       statePos = getStatePos(newTaskState-2, task_width);
       newHistory = (statePos - Tasks.findOne({id:task.id}).percent_average_completition_time*task_width)/statePos;
@@ -291,12 +310,15 @@ var stop = function(task) {
       if ((newTaskState == TaskArray[i].progress_state) && (TaskArray[i].after == null) && (task.id != TaskArray[i].id)) {
         // Position unter den letzten Task
         posY = $('#' + TaskArray[i].id).position().top + task_height + spaceB - tbY;
+        
+        //neue zuordnung der Vorgaenger und Nachfolger
         Tasks.update(TaskArray[i]._id, {$set:{after:task.id}});
         stateUpdate(Tasks.findOne({id:task.id}).before, Tasks.findOne({id:task.id}).after);
         Tasks.update(currentTaskID, {$set:{before:TaskArray[i].id}});
       }  
     }
     
+    //animation zur neuen Position
     d3.select('#' + task.id)
       .transition()
       .attr("transform", "translate(" + (oldX+task_width+spaceR - tbX) + "," + posY +")")
@@ -304,13 +326,20 @@ var stop = function(task) {
       .select(".progress").attr("width", setProgressGraph(Tasks.findOne({id:task.id})))
       .duration(600);
       
+    //erster Task in der Spalte
     if (posY == spaceT) {
+      
+      //neuordnung der Voraenger u Nachfolger
       stateUpdate(Tasks.findOne({id:task.id}).before, Tasks.findOne({id:task.id}).after);
       Tasks.update(currentTaskID, {$set:{before:null}});
-    }  
+    }
+    
+    //Nachfolger des droped Tasks auf null setzten
     Tasks.update(currentTaskID, {$set:{after:null}});
 
     update();
+    //waartezeit bis alle Tasks nachgerueckt sind
+    //dann processLineUpdate
     setTimeout(function(){ processLineUpdate();},500);
   }
 }
@@ -338,18 +367,22 @@ var position = function(task){
   }
 }
 
+/*
+ *berechnet das Detailpolygon des Idealverlaufs 
+ */
 var setDetailPolygon = function(task,i){
   var state = Tasks.findOne({id:task.id}).progress_state;
+  
   if (!(i+1 >= state) || (Tasks.findOne({id:task.id}).percent_average_completition_time > getStatePos(state-1, task_width)/task_width)) {
     if (!(i >= state)){
-    if (i == 0) {
-      x1 = 0;
-      y1 = 0;
-    }
-    else{
-    x1 = getStatePos(i-1, task_width);
-    y1 = getStatePos(i-1, task_height);
-    }
+      if (i == 0) {
+        x1 = 0;
+        y1 = 0;
+      }
+      else{
+        x1 = getStatePos(i-1, task_width);
+        y1 = getStatePos(i-1, task_height);
+      }
     
     x2 = getStatePos(i, task_width);
     y2 = getStatePos(i, task_height);
@@ -366,6 +399,10 @@ var setDetailPolygon = function(task,i){
   else return "0,0 0,0 0,0 0,0";
 }
 
+
+/*
+ *berechnet das Detailpolygon des gespeicherten Verlaufs
+ */
 var setDetailHistoryPolygon = function(task){
   var state = Tasks.findOne({id:task.id}).progress_state;
   var polyString = "0,0 ";
@@ -451,7 +488,6 @@ var detail = function(task , bool){
   
   //zeichnen des Verlaufs  
   if (Tasks.findOne({id:task.id}).progress_state > 0) {
-    //gespeicherter Verlauf
     d3.select('#' + task.id)
     .append("polygon")
     .attr("fill", "rgb(231,60,60)")
@@ -555,16 +591,33 @@ var processLineUpdate = function (){
   }  
 }
 
+/*
+ * ueberprueft alle Tasks in Prozessspalten
+ * aller 1sek -> siehe Timerswitch
+ * erst update() dann Collection aktualisieren
+ *
+ * setTimerGraph()
+ * setTimerColor()
+ * Verlauf in Collection speichern
+ * 
+ */
 var timerTick = function() {
   update();
   var TaskArray = Tasks.find().fetch();
+  
+  //alle Tasks in Prozessspalten & 2*Verweilzeit > durchschnittliche DLZ
   for (var i = 0; i < Tasks.find().count(); i++) {
     if ((TaskArray[i].progress_state != 0) && (TaskArray[i].progress_state < (Columns.find().count()+1))) {
       if(TaskArray[i].percent_average_completition_time <= 2) {
+        //Timergraph aktualisieren
         var point = setTimeGraph(TaskArray[i], (1/average_time)/tickFrequenz);
+        // Farbe des Timergraph aktualisiert
         var color = setTimerColor(TaskArray[i]);
+        //rendern und animieren
         d3.select('#' + TaskArray[i].id).select(".timer").transition().attr("width", point).attr("fill", color);
       }
+      //Verweilzeit groeßer als dDLZ eines Prozesses
+      //neuen Verlauf anlegen und in Collection speichern
       if (Tasks.findOne({id:TaskArray[i].id}).percent_average_completition_time > getStatePos(TaskArray[i].progress_state-1, task_width)/task_width) {
         statePos = getStatePos(TaskArray[i].progress_state-1, task_width);
         newHistory = (statePos - Tasks.findOne({id:TaskArray[i].id}).percent_average_completition_time*task_width)/statePos;
@@ -576,7 +629,10 @@ var timerTick = function() {
   }
 }
 
-// Button fuer Zeit ein/aus
+/*
+ * Timerswitch
+ * setInterval 1 sek -> timertick()
+ */
 var timerSwitch = function() {
   if ($('input[name=timerswitch]').is(':checked')) {
     interval = setInterval(timerTick,1000);
@@ -586,7 +642,9 @@ var timerSwitch = function() {
   }
 }
 
-//setz alle Daten auf die JSON-Inhalte
+/*
+ * setz die Task Datenbank auf die JSON-Inhalte zurueck
+ */
 var refresh = function(){
   var fetch = Tasks.find().fetch();
   
@@ -615,14 +673,20 @@ var refresh = function(){
   else refresh();
 }
 
+
+/*
+ *noch leere Funktion zur erstellung neuer Tasks
+ */
 var setNewTask = function(){
-  alert("boing");  
+ 
 }
 
-// rendert alle Tasks
+/*
+ * rendert alle Tasks aus der Collection
+ */
 var renderTask = function() {
   
-  // falls wir updaten, alle alten <g> loeschen
+  //alle Groupelemente werden zu begin aus der SVG geloeschen
   d3.select("#taskboard").selectAll("g").remove();
   
   var taskboard = d3.select("#taskboard").selectAll()
@@ -637,6 +701,7 @@ var renderTask = function() {
   .on("dragstart", function(d){start(d.id)})     
   .on("drag", function(d){move(d)})
   .on("dragend", function(d){stop(d)}))
+  //OnClick Event
   .on("click", function(d){ detail(d, false)});
   
   // Rechteck  
@@ -661,25 +726,37 @@ var renderTask = function() {
     .attr("class", "progress");
 }
 
-//rendert das Taskboard
+/*
+ * rendert das Taskboard
+ * rendert Prozesslinien innerhalb der Tasks
+ * berechnet die durchschnittliche DLZ
+ * rendert Prozesslinien am ende der Spalten
+ * rendert die Progressgraphen
+ * positioniert die ersten Tasks jeder Spalte -> position(task) *rekursive für alle Nachfolger*
+ * nach den rendern wird immer update() aufgerufen
+ */
 var renderTaskboard = function(){
   average_time = 0;
   var ColumnArray = Columns.find().fetch();
   
+  //berechnung der durchschnittlichen DLZ
   for (var i = 0; i < Columns.find().count(); i++) {
     average_time = average_time + ColumnArray[i].average_completition_time;
   }
   
+  //loescht alle Linien und Text Elemente aus der SVG
   d3.select("#taskboard").selectAll("text").remove();
   d3.select("#taskboard").selectAll("line").remove();
   
   var taskboard = d3.select("#taskboard")
   
+  //Backlog-Headline
   taskboard.append("text")
     .attr("x", 0)
     .attr("y", 15)
     .text("Backlog");
-  
+    
+  //Prozessspalten-Headlines
   taskboard.append("text").selectAll("tspan")
     .data(Columns.find().fetch())
     .enter()
@@ -687,7 +764,8 @@ var renderTaskboard = function(){
       .attr("x", function(d,i){ return (task_width+spaceR)*(i+1)})
       .attr("y", 15)
       .text(function(d){ return d.id});
-    
+  
+  //Prozess-Headline-Linien  
   taskboard.selectAll("line")
     .data(Columns.find().fetch())
     .enter()
@@ -696,24 +774,28 @@ var renderTaskboard = function(){
       .attr("y1", spaceT-15)
       .attr("x2", function(d,i){ return ((task_width+spaceR)*(i+1))+task_width})
       .attr("y2", spaceT-15);
-      
+  
+  //Done-Headline    
   taskboard.append("text")
     .attr("x", function(){return (Columns.find().count()+1)*(task_width+spaceR)})
     .attr("y", 15)
     .text("Done");
   
+  //Done-Headline-Linie
   taskboard.append("line")
     .attr("x1", function(){return (Columns.find().count()+1)*(task_width+spaceR)})
     .attr("y1", spaceT-15)
     .attr("x2", function(){return (Columns.find().count()+1)*(task_width+spaceR)+task_width})
     .attr("y2", spaceT-15);
-    
+  
+  //Backlog-Headline-Linie  
   taskboard.append("line")
     .attr("x1", 0)
     .attr("y1", spaceT-15)
     .attr("x2", task_width)
     .attr("y2", spaceT-15);
    
+  //Prozesslinien innerhalb der Tasks
   taskboard.selectAll("g").selectAll("line")
     .data(Columns.find().fetch())
     .enter()
@@ -723,17 +805,19 @@ var renderTaskboard = function(){
       .attr("x2", function(d,i){return getStatePos(i, task_width)})
       .attr("y2", task_height); 
   
-  
+  //setzt den Progressgraphen auf den wert aus der Collection
   for (var i = 0; i < Tasks.find().count(); i++) {
        d3.select('#' + Tasks.find().fetch()[i].id)
       .select(".progress").attr("width", setProgressGraph(Tasks.find().fetch()[i]));
   }
   
+  //Positioniert die Tasks, die keine Vorgänger haben
   var headTasks = Tasks.find({before:null}).fetch();
   for (var i = 0; i < headTasks.length; i++) {
     position(headTasks[i]);
   }
-    
+  
+  //Styledefinition  
   taskboard.selectAll("line")
     .attr("stroke-width", 4)
     .attr("stroke", "#000000");
@@ -744,7 +828,8 @@ var renderTaskboard = function(){
     .attr("font-size", "20px")
     .attr("font-family", "Helvetica")
     .attr("fill", "#000000");
-    
+  
+ //Zeichnet die Prozesslinien(-gruppe) hinter den letzten Task jeder Spalte   
  var processLines = taskboard.selectAll()
     .data(Columns.find().fetch())
     .enter()
@@ -761,7 +846,8 @@ var renderTaskboard = function(){
                 y = spaceT;
               }
               return "translate(" + x + "," + y +")" });
-   
+  
+  //Prozesslinie am Ende
   processLines.append("line")
     .attr("x1", 0)
     .attr("y1", 0)
@@ -770,6 +856,8 @@ var renderTaskboard = function(){
     .attr("stroke-width", 2)
     .attr("stroke", "rgb(150,150,150)");
   
+  //Text am Ende jeder Prozessspalte
+  // durchschnittliche DLZ jedes Prozesses
   processLines.append("text")
     .attr("x", 0)
     .attr("y", 20)
@@ -777,7 +865,8 @@ var renderTaskboard = function(){
     .attr("font-size", "15px")
     .attr("font-family", "Helvetica")
     .attr("fill", "rgb(150,150,150)");
-    
+  
+  //neuer-Task-Button  
   d3.select("#taskboard").append("g")
     .attr("id", "newTaskButton")
     .attr("transform",
@@ -787,6 +876,7 @@ var renderTaskboard = function(){
             }
             else y = spaceT;
             return "translate(0," + y + ")";})
+    //onClick-Event
     .on("click", function(){ setNewTask() })
     .append("line")
       .attr("x1", 0)
@@ -812,10 +902,8 @@ var renderTaskboard = function(){
 if (Meteor.isServer) {
   
   Meteor.startup(function() {
-
-    // wenn die Datenbank leer ist, mit Beispielen fuellen
+    // wenn die Datenbank leer ist, mit JSON fuellen
     if (Tasks.find().count() === 0 && Columns.find().count() === 0) {
-      // leere Tasks anlegen
       for (var i = 0; i < dataset.task.length; i++) {
       Tasks.insert({
         "id": dataset.task[i].id,
@@ -828,8 +916,8 @@ if (Meteor.isServer) {
         "state_history2": dataset.task[i].state_history2
         });
       }
-      for (var i = 0; i < dataset.Columns.length; i++) {
       // Spalten anlegen
+      for (var i = 0; i < dataset.Columns.length; i++) {
       Columns.insert({
                       "id": dataset.Columns[i].id,
                       "average_completition_time": dataset.Columns[i].average_completition_time
@@ -838,12 +926,14 @@ if (Meteor.isServer) {
     }
   });
   
+  //erlaubt den Client das manipulieren der Task-Collection
   Tasks.allow({
     insert: function () { return true; },
     update: function () { return true; },
     remove: function () { return true; } 
     });
   
+  //erlaubt den Client das manipulieren der Spaletn-Collection
   Columns.allow({
     insert: function () { return true; },
     update: function () { return true; },
@@ -851,45 +941,48 @@ if (Meteor.isServer) {
     });
   
   
-  
+  //uebergibt den Client alle Elemente der Task-Collection
   Meteor.publish("tasks", function() {
         return Tasks.find({});
     });
   
+  //uebergibt den Client alle Elemente der Spalten-Collection
   Meteor.publish("columns", function() {
         return Columns.find({});
     });
-  
 }
 
 ////// CLIENT
 if (Meteor.isClient) {
   
-  
+  //wird erst ausgefuehrt nachdem Task-Collection geladen wurde
   Meteor.subscribe("tasks", function(){
-     //Set the reactive session as true to indicate that the data have been loaded
      Session.set('data_loaded', true);
       renderTask();
   });
   
+  //wird erst ausgefuehrt nachdem Spalten-Collection geladen wurde
   Meteor.subscribe("columns", function(){
-     //Set the reactive session as true to indicate that the data have been loaded
      Session.set('data_loaded', true);
       renderTaskboard();
   });
-
   
+  //wird ausgefuehrt wenn Client erste Anfrage stellt
   Meteor.startup(function() {
-    Session.set('data_loaded', false); 
+    Session.set('data_loaded', false);
+    //Buttonbelegung
     $('#timeswitch').click(timerSwitch);
     $('#back').click(refresh);
     $('#detailView').click(viewAllDetail);
+    
     detailClick = null;
     
+    //HTML-Template
     Template.board.rendered = function() {
      tbX = $('#taskboard').position().left;
      tbY = $('#taskboard').position().top;
      
+     //anpassen der Hoehe und Breite der Tasks nach Fenstergroesse
      task_height = $(document).height()/10;
      task_width = $(document).width()/7;
     }
